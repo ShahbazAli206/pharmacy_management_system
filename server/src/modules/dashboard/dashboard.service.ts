@@ -2,6 +2,7 @@ import { prisma } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { lowStock, expiryAlerts } from '../inventory/inventory.service';
+import { complianceScore } from '../compliance/compliance.service';
 
 /** Start/end of the current local day, for "today" aggregations. */
 function todayRange() {
@@ -40,11 +41,15 @@ export async function ownerOverview(auth: AuthContext) {
   const revCents = new Map(salesByLoc.map((s) => [s.pharmacyId, s._sum.totalCents ?? 0]));
   const rxCount = new Map(rxByLoc.map((r) => [r.pharmacyId, r._count._all]));
 
-  // Per-location inventory alert counts, reusing the inventory helpers.
-  const alertCounts = await Promise.all(
+  // Per-location inventory alert counts + compliance band, reusing the module helpers.
+  const perLoc = await Promise.all(
     pharmacies.map(async (p) => {
-      const [low, exp] = await Promise.all([lowStock(auth, p.id), expiryAlerts(auth, p.id)]);
-      return { lowStockAlerts: low.length, expiryAlerts: exp.length };
+      const [low, exp, cs] = await Promise.all([
+        lowStock(auth, p.id),
+        expiryAlerts(auth, p.id),
+        complianceScore(auth, p.id),
+      ]);
+      return { lowStockAlerts: low.length, expiryAlerts: exp.length, complianceStatus: cs.band };
     }),
   );
 
@@ -58,9 +63,9 @@ export async function ownerOverview(auth: AuthContext) {
     patientCount: p._count.patients,
     revenueToday: (revCents.get(p.id) ?? 0) / 100,
     prescriptionsToday: rxCount.get(p.id) ?? 0,
-    complianceStatus: 'GREEN' as const,
-    lowStockAlerts: alertCounts[i].lowStockAlerts,
-    expiryAlerts: alertCounts[i].expiryAlerts,
+    complianceStatus: perLoc[i].complianceStatus,
+    lowStockAlerts: perLoc[i].lowStockAlerts,
+    expiryAlerts: perLoc[i].expiryAlerts,
   }));
 
   return {
@@ -87,7 +92,7 @@ export async function locationOverview(auth: AuthContext, requestedPharmacyId?: 
   assertLocationAccess(auth, pharmacyId);
 
   const { start, end } = todayRange();
-  const [pharmacy, salesAgg, rxToday, belowThreshold] = await Promise.all([
+  const [pharmacy, salesAgg, rxToday, belowThreshold, score, activeRx] = await Promise.all([
     prisma.pharmacy.findUnique({
       where: { id: pharmacyId },
       include: { _count: { select: { users: true, patients: true } } },
@@ -98,6 +103,8 @@ export async function locationOverview(auth: AuthContext, requestedPharmacyId?: 
     }),
     prisma.prescription.count({ where: { pharmacyId, createdAt: { gte: start, lt: end } } }),
     lowStock(auth, pharmacyId), // items at/under their reorder threshold
+    complianceScore(auth, pharmacyId), // this month's checklist total/completed + band
+    prisma.prescription.count({ where: { pharmacyId, status: 'ACTIVE' } }),
   ]);
   if (!pharmacy) throw new Error('Pharmacy not found');
 
@@ -115,7 +122,7 @@ export async function locationOverview(auth: AuthContext, requestedPharmacyId?: 
     salesToday: (salesAgg._sum.totalCents ?? 0) / 100, // dollars
     prescriptionsToday: rxToday,
     reorderAlerts: belowThreshold.length,
-    refillsDueToday: 0,
-    complianceChecklist: { total: 0, completed: 0 },
+    refillsDueToday: activeRx, // active prescriptions (client labels this)
+    complianceChecklist: { total: score.total, completed: score.completed },
   };
 }

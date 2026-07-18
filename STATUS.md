@@ -59,10 +59,11 @@ for location-scoped writes (`76bbea3`).
   owner approval → atomic FEFO move; controlled-substance registers balanced. New
   `GET /pharmacies` directory + `POST/GET/PATCH /users` staff endpoints.
 - **UI:** persisted dark mode + theme tokens; fixed `.btn-ghost` contrast bug.
-- **Dashboards wired to real data:** owner + location dashboards now show real today's
-  revenue (from POS sales), prescription volume, reorder/low-stock alerts, and per-location
-  low-stock + expiry alerts (owner table, reusing the inventory helpers) instead of the old
-  `0` placeholders. Remaining stubs: compliance status, `refillsDueToday`, pending reports.
+- **Dashboards fully wired to real data:** owner + location dashboards now show real today's
+  revenue (POS sales), prescription volume, reorder/low-stock + expiry alerts, **per-location
+  compliance band** (from `complianceScore`), the **compliance checklist** progress, and
+  active-prescription count — all reusing existing module helpers, no schema change. Only
+  `pendingPartnerReports` stays `0` by design (no partner-reports feature exists yet).
 
 ---
 

@@ -38,7 +38,7 @@ export function LocationDashboard() {
         <Stat label="Sales today" value={currency(data.salesToday)} />
         <Stat label="Prescriptions today" value={data.prescriptionsToday.toString()} />
         <Stat label="Reorder alerts" value={data.reorderAlerts.toString()} sub="at/under threshold" />
-        <Stat label="Refills due today" value={data.refillsDueToday.toString()} sub="wiring pending" />
+        <Stat label="Active prescriptions" value={data.refillsDueToday.toString()} sub="refillable" />
       </div>
 
       <section className="panel">
@@ -48,7 +48,7 @@ export function LocationDashboard() {
         </div>
         <p className="muted">
           {data.complianceChecklist.completed}/{data.complianceChecklist.total} tasks complete
-          {data.complianceChecklist.total === 0 && ' — checklist module arrives in Phase 3'}
+          {data.complianceChecklist.total === 0 && ' — no tasks generated this month yet'}
         </p>
       </section>
     </div>
