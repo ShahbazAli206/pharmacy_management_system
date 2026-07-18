@@ -13,6 +13,10 @@ import { AuditLog } from './pages/AuditLog';
 import { Finance } from './pages/Finance';
 import { Cameras } from './pages/Cameras';
 import { Admin } from './pages/Admin';
+import { Documents } from './pages/Documents';
+import { Reports } from './pages/Reports';
+import { Workflow } from './pages/Workflow';
+import { Settings } from './pages/Settings';
 
 /** Landing route: owners get the consolidated overview, everyone else their location. */
 function Home() {
@@ -116,6 +120,46 @@ export default function App() {
           <ProtectedRoute permission="camera:view">
             <Layout>
               <Cameras />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute permission="report:run">
+            <Layout>
+              <Reports />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/documents"
+        element={
+          <ProtectedRoute permission="document:read">
+            <Layout>
+              <Documents />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workflow"
+        element={
+          <ProtectedRoute permission="workflow:approve">
+            <Layout>
+              <Workflow />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
             </Layout>
           </ProtectedRoute>
         }

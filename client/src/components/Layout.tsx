@@ -67,9 +67,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Finance
             </NavLink>
           )}
+          {can('report:run') && (
+            <NavLink to="/reports" className="nav-link">
+              Reports
+            </NavLink>
+          )}
+          {can('document:read') && (
+            <NavLink to="/documents" className="nav-link">
+              Documents
+            </NavLink>
+          )}
           {can('camera:view') && (
             <NavLink to="/cameras" className="nav-link">
               Cameras
+            </NavLink>
+          )}
+          {can('workflow:approve') && (
+            <NavLink to="/workflow" className="nav-link">
+              Workflow
             </NavLink>
           )}
           {(can('audit:read:all') || can('audit:read:location')) && (
@@ -77,6 +92,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Audit Log
             </NavLink>
           )}
+          <NavLink to="/settings" className="nav-link">
+            Settings
+          </NavLink>
           {can('system:monitor') && (
             <NavLink to="/admin" className="nav-link">
               Administration

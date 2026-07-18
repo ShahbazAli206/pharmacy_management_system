@@ -228,3 +228,78 @@ export interface SystemHealth {
   counts: { pharmacies: number; users: number; patients: number; prescriptions: number; sales: number };
   operational: { openComplianceAlerts: number; pendingNotifications: number };
 }
+
+// ---- Phase 8: Documents, e-signature, bulk import ----
+export interface DocumentRow {
+  id: string;
+  name: string;
+  category: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface SignatureRow {
+  id: string;
+  documentId: string;
+  signerName: string;
+  signerEmail: string;
+  status: 'PENDING' | 'SIGNED' | 'DECLINED';
+  signedAt: string | null;
+  createdAt: string;
+}
+
+export interface ImportResult {
+  entity: string;
+  total: number;
+  created: number;
+  failed: number;
+  errors: Array<{ row: number; error: string }>;
+}
+
+// ---- Phase 9: Settings + notification preferences ----
+export interface SystemSettings {
+  maintenanceMode: boolean;
+  dataRetentionDays: number;
+  defaultCurrency: string;
+  defaultTimezone: string;
+  defaultLocale: string;
+}
+
+export interface NotificationPreference {
+  sms: boolean;
+  email: boolean;
+  push: boolean;
+  inApp: boolean;
+}
+
+// ---- Phase 10: Reporting ----
+export interface SavedReportRow {
+  id: string;
+  name: string;
+  type: string;
+  paramsJson: string;
+  createdAt: string;
+}
+
+export interface ReportResult {
+  type: string;
+  series?: Array<{ date: string; value?: number; valueCents?: number }>;
+  data?: Record<string, number>;
+  history?: Array<{ date: string; valueCents: number }>;
+  forecast?: Array<{ date: string; valueCents: number }>;
+  method?: string;
+}
+
+// ---- Phase 11: Workflow, role simulator, timeline ----
+export interface WorkflowRow {
+  id: string;
+  pharmacyId: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  reason: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  requestedByUserId: string;
+  createdAt: string;
+}
