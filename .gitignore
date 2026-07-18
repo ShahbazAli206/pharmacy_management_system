@@ -41,5 +41,8 @@ Thumbs.db
 *.suo
 *.sw?
 
+# ---- Local dev database (portable PostgreSQL binaries + data) ----
+.localdb/
+
 # ---- Misc ----
 *.local

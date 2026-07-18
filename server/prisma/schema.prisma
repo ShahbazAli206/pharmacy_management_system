@@ -138,6 +138,7 @@ model User {
   licenseExpiry DateTime?
   lastLoginAt   DateTime?
   refreshTokens RefreshToken[]
+  passwordResets PasswordResetToken[]
   auditLogs     AuditLog[]
   purchaseOrders       PurchaseOrder[]    @relation("POCreatedBy")
   prescriptionsCreated Prescription[]     @relation("RxCreatedBy")
@@ -161,6 +162,19 @@ model RefreshToken {
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Single-use, hashed password-reset tokens (raw token emailed, never stored).
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

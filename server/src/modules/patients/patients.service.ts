@@ -125,6 +125,70 @@ export async function createPatient(auth: AuthContext, input: PatientInput) {
   return toDto(created);
 }
 
+// ---------------------------------------------------------------------------
+// Allergy / chronic-condition sub-resources. Every mutation loads the parent
+// patient first and enforces location isolation before writing.
+// ---------------------------------------------------------------------------
+
+export interface AllergyInput {
+  substance: string;
+  reaction?: string | null;
+  severity?: 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
+}
+
+export interface ConditionInput {
+  name: string;
+  diagnosis?: string | null;
+}
+
+/** Loads a patient for a write and asserts the caller may touch its location. */
+async function assertPatientWritable(auth: AuthContext, patientId: string) {
+  const patient = await prisma.patient.findUnique({
+    where: { id: patientId },
+    select: { id: true, pharmacyId: true },
+  });
+  if (!patient) throw notFound('Patient not found');
+  assertLocationAccess(auth, patient.pharmacyId);
+  return patient;
+}
+
+export async function addAllergy(auth: AuthContext, patientId: string, input: AllergyInput) {
+  await assertPatientWritable(auth, patientId);
+  return prisma.allergy.create({
+    data: {
+      patientId,
+      substance: input.substance,
+      reaction: input.reaction ?? null,
+      severity: input.severity ?? 'MODERATE',
+    },
+  });
+}
+
+export async function removeAllergy(auth: AuthContext, patientId: string, allergyId: string) {
+  await assertPatientWritable(auth, patientId);
+  const allergy = await prisma.allergy.findUnique({ where: { id: allergyId } });
+  if (!allergy || allergy.patientId !== patientId) throw notFound('Allergy not found');
+  await prisma.allergy.delete({ where: { id: allergyId } });
+}
+
+export async function addCondition(auth: AuthContext, patientId: string, input: ConditionInput) {
+  await assertPatientWritable(auth, patientId);
+  return prisma.chronicCondition.create({
+    data: {
+      patientId,
+      name: input.name,
+      diagnosis: input.diagnosis ?? null,
+    },
+  });
+}
+
+export async function removeCondition(auth: AuthContext, patientId: string, conditionId: string) {
+  await assertPatientWritable(auth, patientId);
+  const condition = await prisma.chronicCondition.findUnique({ where: { id: conditionId } });
+  if (!condition || condition.patientId !== patientId) throw notFound('Condition not found');
+  await prisma.chronicCondition.delete({ where: { id: conditionId } });
+}
+
 export async function updatePatient(auth: AuthContext, id: string, input: Partial<PatientInput>) {
   const existing = await prisma.patient.findUnique({ where: { id } });
   if (!existing) throw notFound('Patient not found');

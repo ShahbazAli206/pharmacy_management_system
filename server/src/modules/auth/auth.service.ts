@@ -1,14 +1,21 @@
+import crypto from 'crypto';
 import { Request } from 'express';
 import { prisma } from '../../config/prisma';
-import { verifyPassword } from '../../utils/password';
+import { env } from '../../config/env';
+import { hashPassword, verifyPassword } from '../../utils/password';
 import {
   generateRefreshToken,
   refreshExpiryDate,
   signAccessToken,
 } from '../../utils/jwt';
-import { sha256 } from '../../utils/crypto';
-import { unauthorized } from '../../utils/httpError';
+import { sha256, encryptField, decryptField } from '../../utils/crypto';
+import { badRequest, mfaRequired, unauthorized } from '../../utils/httpError';
 import { recordAudit } from '../../services/audit';
+import { generateMfaSecret, mfaKeyUri, verifyMfaToken } from '../../services/mfa';
+import { getNotificationProvider } from '../../services/notifications';
+
+/** Reset tokens live for one hour. */
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export interface LoginResult {
   accessToken: string;
@@ -25,7 +32,12 @@ export interface LoginResult {
   };
 }
 
-export async function login(email: string, password: string, req: Request): Promise<LoginResult> {
+export async function login(
+  email: string,
+  password: string,
+  req: Request,
+  mfaToken?: string,
+): Promise<LoginResult> {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
     include: { role: { include: { permissions: { include: { permission: true } } } } },
@@ -46,6 +58,24 @@ export async function login(email: string, password: string, req: Request): Prom
       req,
     });
     throw unauthorized('Invalid credentials');
+  }
+
+  // Second factor: when MFA is enabled the password alone is insufficient.
+  if (user.mfaEnabled && user.mfaSecret) {
+    if (!mfaToken) {
+      throw mfaRequired();
+    }
+    if (!verifyMfaToken(decryptField(user.mfaSecret), mfaToken)) {
+      await recordAudit({
+        action: 'LOGIN_FAILED',
+        entity: 'Auth',
+        userId: user.id,
+        pharmacyId: user.pharmacyId,
+        metadata: { reason: 'bad_mfa_token' },
+        req,
+      });
+      throw unauthorized('Invalid MFA token');
+    }
   }
 
   const accessToken = signAccessToken({
@@ -129,5 +159,148 @@ export async function logout(rawToken: string): Promise<void> {
   await prisma.refreshToken.updateMany({
     where: { tokenHash, revokedAt: null },
     data: { revokedAt: new Date() },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Password reset. A raw token is emailed (via the pluggable notification
+// provider); only its SHA-256 hash is persisted. Tokens are single-use and
+// expire after one hour. To avoid account enumeration, requesting a reset
+// always succeeds regardless of whether the email exists.
+// ---------------------------------------------------------------------------
+
+export async function requestPasswordReset(email: string, req: Request): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user || !user.isActive) {
+    // Silently no-op so callers cannot probe which emails are registered.
+    return;
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  // Invalidate any outstanding tokens, then issue a fresh one.
+  await prisma.passwordResetToken.updateMany({
+    where: { userId: user.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      tokenHash: sha256(rawToken),
+      expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+    },
+  });
+
+  const resetUrl = `${env.CORS_ORIGIN}/reset-password?token=${rawToken}`;
+  await getNotificationProvider().send({
+    channel: 'EMAIL',
+    to: user.email,
+    subject: 'Reset your Pharmacy PMS password',
+    body:
+      `Hello ${user.firstName},\n\n` +
+      `A password reset was requested for your account. Use the link below within ` +
+      `one hour to set a new password:\n\n${resetUrl}\n\n` +
+      `If you did not request this, you can safely ignore this email.`,
+  });
+
+  await recordAudit({
+    action: 'UPDATE',
+    entity: 'Auth',
+    userId: user.id,
+    pharmacyId: user.pharmacyId,
+    metadata: { passwordReset: 'requested' },
+    req,
+  });
+}
+
+export async function resetPassword(rawToken: string, newPassword: string, req: Request): Promise<void> {
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: sha256(rawToken) },
+  });
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    throw badRequest('Invalid or expired reset token');
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  // Update the password, consume the token, and revoke all sessions atomically.
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    prisma.refreshToken.updateMany({
+      where: { userId: record.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+  ]);
+
+  await recordAudit({
+    action: 'UPDATE',
+    entity: 'Auth',
+    userId: record.userId,
+    metadata: { passwordReset: 'completed' },
+    req,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// MFA (TOTP) enrolment. The secret is generated on setup and stored
+// field-level-encrypted; enrolment only completes once the user proves they
+// can produce a valid code (enable), preventing lock-out from a mistyped secret.
+// ---------------------------------------------------------------------------
+
+export async function setupMfa(userId: string): Promise<{ secret: string; otpauthUrl: string }> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw unauthorized();
+
+  const secret = generateMfaSecret();
+  await prisma.user.update({
+    where: { id: userId },
+    // Store encrypted, but leave mfaEnabled false until the user confirms a code.
+    data: { mfaSecret: encryptField(secret) },
+  });
+
+  return { secret, otpauthUrl: mfaKeyUri(user.email, secret) };
+}
+
+export async function enableMfa(userId: string, token: string, req: Request): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw unauthorized();
+  if (!user.mfaSecret) throw badRequest('Call MFA setup before enabling');
+  if (user.mfaEnabled) throw badRequest('MFA is already enabled');
+
+  if (!verifyMfaToken(decryptField(user.mfaSecret), token)) {
+    throw badRequest('Invalid MFA token');
+  }
+
+  await prisma.user.update({ where: { id: userId }, data: { mfaEnabled: true } });
+  await recordAudit({
+    action: 'UPDATE',
+    entity: 'Auth',
+    userId,
+    pharmacyId: user.pharmacyId,
+    metadata: { mfa: 'enabled' },
+    req,
+  });
+}
+
+export async function disableMfa(userId: string, token: string, req: Request): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw unauthorized();
+  if (!user.mfaEnabled || !user.mfaSecret) throw badRequest('MFA is not enabled');
+
+  // Require a valid current code to disable, so a hijacked session alone cannot.
+  if (!verifyMfaToken(decryptField(user.mfaSecret), token)) {
+    throw badRequest('Invalid MFA token');
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { mfaEnabled: false, mfaSecret: null },
+  });
+  await recordAudit({
+    action: 'UPDATE',
+    entity: 'Auth',
+    userId,
+    pharmacyId: user.pharmacyId,
+    metadata: { mfa: 'disabled' },
+    req,
   });
 }

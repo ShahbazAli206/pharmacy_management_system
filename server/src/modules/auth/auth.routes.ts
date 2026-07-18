@@ -1,7 +1,17 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../../middleware/auth';
-import { loginHandler, logoutHandler, meHandler, refreshHandler } from './auth.controller';
+import {
+  forgotPasswordHandler,
+  loginHandler,
+  logoutHandler,
+  meHandler,
+  mfaDisableHandler,
+  mfaEnableHandler,
+  mfaSetupHandler,
+  refreshHandler,
+  resetPasswordHandler,
+} from './auth.controller';
 
 const router = Router();
 
@@ -17,5 +27,14 @@ router.post('/login', authLimiter, loginHandler);
 router.post('/refresh', authLimiter, refreshHandler);
 router.post('/logout', logoutHandler);
 router.get('/me', authenticate, meHandler);
+
+// Password reset (rate-limited; token delivered by email).
+router.post('/password/forgot', authLimiter, forgotPasswordHandler);
+router.post('/password/reset', authLimiter, resetPasswordHandler);
+
+// MFA (TOTP) enrolment — all require an authenticated session.
+router.post('/mfa/setup', authenticate, mfaSetupHandler);
+router.post('/mfa/enable', authenticate, mfaEnableHandler);
+router.post('/mfa/disable', authenticate, mfaDisableHandler);
 
 export default router;

@@ -69,3 +69,48 @@ export const updateHandler = asyncHandler(async (req: Request, res: Response) =>
   await recordAudit({ action: 'UPDATE', entity: 'Patient', entityId: patient.id, req });
   res.json(patient);
 });
+
+// --- Allergy sub-resource ---
+
+const allergySchema = z.object({
+  substance: z.string().min(1),
+  reaction: z.string().nullable().optional(),
+  severity: z.enum(['LOW', 'MODERATE', 'HIGH', 'SEVERE']).optional(),
+});
+
+export const addAllergyHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.auth) throw unauthorized();
+  const input = allergySchema.parse(req.body);
+  const allergy = await service.addAllergy(req.auth, req.params.id, input);
+  await recordAudit({ action: 'UPDATE', entity: 'Patient', entityId: req.params.id, metadata: { allergyAdded: allergy.id }, req });
+  res.status(201).json(allergy);
+});
+
+export const removeAllergyHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.auth) throw unauthorized();
+  await service.removeAllergy(req.auth, req.params.id, req.params.allergyId);
+  await recordAudit({ action: 'UPDATE', entity: 'Patient', entityId: req.params.id, metadata: { allergyRemoved: req.params.allergyId }, req });
+  res.status(204).send();
+});
+
+// --- Chronic-condition sub-resource ---
+
+const conditionSchema = z.object({
+  name: z.string().min(1),
+  diagnosis: z.string().nullable().optional(),
+});
+
+export const addConditionHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.auth) throw unauthorized();
+  const input = conditionSchema.parse(req.body);
+  const condition = await service.addCondition(req.auth, req.params.id, input);
+  await recordAudit({ action: 'UPDATE', entity: 'Patient', entityId: req.params.id, metadata: { conditionAdded: condition.id }, req });
+  res.status(201).json(condition);
+});
+
+export const removeConditionHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.auth) throw unauthorized();
+  await service.removeCondition(req.auth, req.params.id, req.params.conditionId);
+  await recordAudit({ action: 'UPDATE', entity: 'Patient', entityId: req.params.id, metadata: { conditionRemoved: req.params.conditionId }, req });
+  res.status(204).send();
+});

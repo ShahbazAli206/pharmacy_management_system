@@ -25,12 +25,16 @@ import settingsRoutes from './modules/settings/settings.routes';
 import reportRoutes from './modules/reports/reports.routes';
 import workflowRoutes from './modules/workflow/workflow.routes';
 import adminToolsRoutes from './modules/admin/adminTools.routes';
+import docsRoutes from './docs/docs.routes';
 
 const router = Router();
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'pharmacy-api', time: new Date().toISOString() });
 });
+
+// API documentation (OpenAPI 3 spec at /api/docs.json, Swagger UI at /api/docs).
+router.use('/', docsRoutes);
 
 router.use('/auth', authRoutes);
 router.use('/patients', patientRoutes);

@@ -17,7 +17,7 @@ Pharmecy_App/
 
 ---
 
-## PHASE 1 — Foundation (spec Months 1–3)  ← IN PROGRESS
+## PHASE 1 — Foundation (spec Months 1–3)  ← COMPLETE
 
 ### 1.1 Project scaffold & tooling
 - [x] Backend project: `server/` with Express + TypeScript, tsconfig, scripts.
@@ -33,15 +33,15 @@ Pharmecy_App/
 - [x] `Patient` — profile + field-level encrypted PII (health card, insurance) + allergies/conditions.
 - [x] `AuditLog` — append-only (user, pharmacy, action, entity, entityId, ip, ua).
 - [x] Seed script: 16 pharmacies, owner + sample staff, full permission matrix.
-- [ ] Run initial migration against a live PostgreSQL DB (needs DB connection).
+- [x] Run initial migration against a live PostgreSQL DB (portable PG17 on `:5433`; migration `20260718144534_init` applied, seeded, login + owner dashboard verified end-to-end).
 
 ### 1.3 Authentication
 - [x] Login with hashed passwords (bcryptjs, 12 rounds).
 - [x] JWT issuance with `role` + `locationId` claims; refresh-token rotation (hashed at rest).
 - [x] Logout (refresh-token revocation).
 - [x] 15-minute access-token TTL (inactivity timeout baseline).
-- [~] MFA scaffolding: DB fields + otplib installed; verify flow not yet wired.
-- [ ] Password reset flow (stub email).
+- [x] MFA (TOTP): setup/enable/disable endpoints, encrypted secret, login enforced (`MFA_REQUIRED`); otplib-backed, E2E-verified.
+- [x] Password reset flow: hashed single-use tokens (1h TTL), stub-email dispatch, refresh-token revocation on reset; E2E-verified.
 
 ### 1.4 RBAC enforcement layer
 - [x] Auth middleware: verify JWT, load live permissions, attach user context.
@@ -54,7 +54,7 @@ Pharmecy_App/
 - [x] Field-level AES-256-GCM encryption for health card + insurance IDs (round-trip + tamper-detection verified).
 - [x] Allergies/ADR + chronic conditions modelled and returned with patient.
 - [x] Access logging on every patient read/list.
-- [ ] Allergy/condition write sub-resource endpoints.
+- [x] Allergy/condition write sub-resource endpoints (POST/DELETE under `/patients/:id`, location-scoped + audited).
 
 ### 1.6 Basic dashboards
 - [x] Owner consolidated overview endpoint (real location/staff/patient counts; revenue/compliance stubbed for later phases).
@@ -64,9 +64,9 @@ Pharmecy_App/
 - [x] API client with automatic refresh-token rotation on 401; patients list page.
 
 ### 1.7 Phase-1 hardening
-- [ ] PostgreSQL row-level security policies for location isolation.
-- [ ] Unit/integration tests for auth + RBAC + patient scoping.
-- [ ] API documentation (OpenAPI/Swagger).
+- [x] PostgreSQL row-level security: FORCE RLS policies on Patient/Allergy/ChronicCondition + least-privilege `pharmacy_app` role, keyed on `app.is_owner`/`app.pharmacy_id` GUCs; isolation proven (scoped/owner/fail-closed/WITH-CHECK). Defense-in-depth beneath the API-layer isolation; runtime app-role cutover documented as the activation step.
+- [x] Unit/integration tests for auth + RBAC + patient scoping (vitest, DB-independent) — 35 tests passing (was 12).
+- [x] API documentation (OpenAPI 3 at `/api/docs.json`, Swagger UI at `/api/docs`; zero new deps).
 
 Legend: [x] done · [~] partial · [ ] not started
 
