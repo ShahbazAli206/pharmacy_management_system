@@ -15,8 +15,9 @@ const locationQuery = z.object({ pharmacyId: z.string().uuid().optional() });
 router.get(
   '/owner',
   requirePermission(PERMISSIONS.DASHBOARD_OWNER),
-  asyncHandler(async (_req, res) => {
-    res.json(await service.ownerOverview());
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    res.json(await service.ownerOverview(req.auth));
   }),
 );
 

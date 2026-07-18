@@ -60,8 +60,9 @@ for location-scoped writes (`76bbea3`).
   `GET /pharmacies` directory + `POST/GET/PATCH /users` staff endpoints.
 - **UI:** persisted dark mode + theme tokens; fixed `.btn-ghost` contrast bug.
 - **Dashboards wired to real data:** owner + location dashboards now show real today's
-  revenue (from POS sales), prescription volume, and location reorder alerts (reusing the
-  inventory low-stock logic) instead of the old `0` placeholders.
+  revenue (from POS sales), prescription volume, reorder/low-stock alerts, and per-location
+  low-stock + expiry alerts (owner table, reusing the inventory helpers) instead of the old
+  `0` placeholders. Remaining stubs: compliance status, `refillsDueToday`, pending reports.
 
 ---
 

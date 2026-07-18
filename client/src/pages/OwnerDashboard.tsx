@@ -46,6 +46,7 @@ export function OwnerDashboard() {
                 <th>Status</th>
                 <th className="num">Staff</th>
                 <th className="num">Patients</th>
+                <th>Alerts</th>
                 <th>Compliance</th>
               </tr>
             </thead>
@@ -62,6 +63,15 @@ export function OwnerDashboard() {
                   </td>
                   <td className="num">{loc.staffCount}</td>
                   <td className="num">{loc.patientCount}</td>
+                  <td>
+                    {loc.lowStockAlerts + loc.expiryAlerts === 0 ? (
+                      <span className="muted">—</span>
+                    ) : (
+                      <span className="badge badge-warn">
+                        {loc.lowStockAlerts} low · {loc.expiryAlerts} exp
+                      </span>
+                    )}
+                  </td>
                   <td>
                     <span className={`dot dot-${loc.complianceStatus.toLowerCase()}`} />
                     {loc.complianceStatus}

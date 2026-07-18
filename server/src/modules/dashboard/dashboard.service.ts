@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
-import { lowStock } from '../inventory/inventory.service';
+import { lowStock, expiryAlerts } from '../inventory/inventory.service';
 
 /** Start/end of the current local day, for "today" aggregations. */
 function todayRange() {
@@ -17,7 +17,7 @@ function todayRange() {
  * plus real today's revenue (from POS sales) and prescription volume, grouped by
  * location. Revenue is returned in dollars (the client formats it as currency).
  */
-export async function ownerOverview() {
+export async function ownerOverview(auth: AuthContext) {
   const { start, end } = todayRange();
 
   const [pharmacies, salesByLoc, rxByLoc] = await Promise.all([
@@ -40,7 +40,15 @@ export async function ownerOverview() {
   const revCents = new Map(salesByLoc.map((s) => [s.pharmacyId, s._sum.totalCents ?? 0]));
   const rxCount = new Map(rxByLoc.map((r) => [r.pharmacyId, r._count._all]));
 
-  const locations = pharmacies.map((p) => ({
+  // Per-location inventory alert counts, reusing the inventory helpers.
+  const alertCounts = await Promise.all(
+    pharmacies.map(async (p) => {
+      const [low, exp] = await Promise.all([lowStock(auth, p.id), expiryAlerts(auth, p.id)]);
+      return { lowStockAlerts: low.length, expiryAlerts: exp.length };
+    }),
+  );
+
+  const locations = pharmacies.map((p, i) => ({
     id: p.id,
     name: p.name,
     code: p.code,
@@ -51,8 +59,8 @@ export async function ownerOverview() {
     revenueToday: (revCents.get(p.id) ?? 0) / 100,
     prescriptionsToday: rxCount.get(p.id) ?? 0,
     complianceStatus: 'GREEN' as const,
-    lowStockAlerts: 0,
-    expiryAlerts: 0,
+    lowStockAlerts: alertCounts[i].lowStockAlerts,
+    expiryAlerts: alertCounts[i].expiryAlerts,
   }));
 
   return {
