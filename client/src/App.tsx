@@ -12,6 +12,7 @@ import { Sales } from './pages/Sales';
 import { Messages } from './pages/Messages';
 import { Prescribers } from './pages/Prescribers';
 import { Narcotics } from './pages/Narcotics';
+import { Transfers } from './pages/Transfers';
 import { Recalls } from './pages/Recalls';
 import { Notifications } from './pages/Notifications';
 import { Compliance } from './pages/Compliance';
@@ -106,6 +107,16 @@ export default function App() {
           <ProtectedRoute permission="prescription:read">
             <Layout>
               <Prescribers />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transfers"
+        element={
+          <ProtectedRoute permission="inventory:read">
+            <Layout>
+              <Transfers />
             </Layout>
           </ProtectedRoute>
         }

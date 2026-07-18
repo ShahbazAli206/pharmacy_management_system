@@ -137,10 +137,13 @@ Typecheck: `npm run typecheck`.
   in-browser, 0 console errors): **Prescribers** (`/prescribers`), **Narcotics** register
   (`/narcotics`), **Recalls**/quarantine (`/recalls`), and **Notifications** queue
   (`/notifications`). Every backend module now has a client surface.
-- Remaining UI polish (optional): notification *preferences* (SMS/email/push per user — the
-  `/settings` page area), narcotics/recall write-flows exercised with live data, and general
-  UX passes. Or build the first unbuilt **feature**: inter-pharmacy stock transfers (new
-  backend module + UI).
+- ✅ **Inter-pharmacy stock transfers** shipped — the first genuinely new *feature* (backend
+  module + `StockTransfer` migration + `Transfers.tsx`). Request → owner approval → atomic
+  FEFO move between locations; controlled substances balance both narcotics registers. Added
+  `GET /pharmacies` directory endpoint. Verified end-to-end (API stock move + in-browser
+  request/approval flow).
+- Remaining (optional): notification *preferences* UI in `/settings`, general UX polish,
+  or wiring a real external provider (S3/Twilio/SendGrid) behind the existing stubs.
 
 Testing infra already in place if needed: `npm test` (35 unit), `npm run test:integration`
 (35), `npm run loadtest` (200 users). Deferred go-live items (pen-test, managed Postgres,

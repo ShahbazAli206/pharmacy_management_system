@@ -62,6 +62,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Inventory
             </NavLink>
           )}
+          {can('inventory:read') && (
+            <NavLink to="/transfers" className="nav-link">
+              Transfers
+            </NavLink>
+          )}
           {can('prescription:read') && (
             <NavLink to="/prescribers" className="nav-link">
               Prescribers

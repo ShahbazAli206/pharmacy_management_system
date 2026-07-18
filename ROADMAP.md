@@ -81,7 +81,7 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] POS/sales: OTC + Rx lines, province HST/GST (Rx zero-rated), stock decrement, daily cash-reconciliation summary.
 - [x] Client pages: Inventory (stock + expiry), Prescriptions (list + dispense), and **Point of Sale** (catalog search → cart, per-line OTC/Rx type + editable qty/price, live province tax with Rx zero-rated, payment method, authoritative receipt + print, and a daily cash-reconciliation tab with expected-vs-counted variance).
 - [~] OCR pipeline: pluggable provider interface + working stub; real engine (Vision/Textract) needs cloud creds.
-- [ ] Inter-pharmacy stock transfers (owner-approved).
+- [x] Inter-pharmacy stock transfers (owner-approved) — request → owner approval → atomic FEFO stock move (decrement source, receive into destination); controlled substances post TRANSFER/RECEIPT to both locations' narcotics registers. New `StockTransfer` model + migration; new `GET /pharmacies` location directory (any authenticated user). **Client: Transfers page** (request form with product search + approval/cancel queue). Verified end-to-end (API: 50 units moved 198→148 / 0→50; UI in-browser).
 - [ ] Digital/printed receipts; provincial + private insurance adjudication.
 - [ ] Background job queue (Bull + Redis) for OCR and report generation (needs Redis).
 

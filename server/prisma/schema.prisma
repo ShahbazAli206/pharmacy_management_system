@@ -117,6 +117,8 @@ model Pharmacy {
   documents          Document[]
   savedReports       SavedReport[]
   workflowRequests   WorkflowRequest[]
+  transfersOut       StockTransfer[]   @relation("TransfersOut")
+  transfersIn        StockTransfer[]   @relation("TransfersIn")
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -150,6 +152,8 @@ model User {
   complianceCompleted  ComplianceRecord[] @relation("ComplianceCompletedBy")
   narcoticTxns         NarcoticTxn[]      @relation("NarcoticPerformedBy")
   narcoticCounts       NarcoticCount[]    @relation("NarcoticCountedBy")
+  transfersRequested   StockTransfer[]    @relation("TransfersRequested")
+  transfersApproved    StockTransfer[]    @relation("TransfersApproved")
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -343,6 +347,7 @@ model Product {
   narcoticTxns   NarcoticTxn[]
   narcoticCounts NarcoticCount[]
   quarantines    QuarantineRecord[]
+  stockTransfers StockTransfer[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -1043,4 +1048,40 @@ model WorkflowRequest {
 
   @@index([pharmacyId, status])
   @@index([entityType, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// Inter-pharmacy stock transfers (owner-approved). A location requests to send
+// stock to another; the owner approves, which moves stock (FEFO out of source,
+// received into destination) in one transaction.
+// ---------------------------------------------------------------------------
+enum TransferStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model StockTransfer {
+  id                String         @id @default(uuid())
+  fromPharmacyId    String
+  fromPharmacy      Pharmacy       @relation("TransfersOut", fields: [fromPharmacyId], references: [id])
+  toPharmacyId      String
+  toPharmacy        Pharmacy       @relation("TransfersIn", fields: [toPharmacyId], references: [id])
+  productId         String
+  product           Product        @relation(fields: [productId], references: [id])
+  quantity          Int
+  status            TransferStatus @default(REQUESTED)
+  reason            String?
+  requestedByUserId String
+  requestedBy       User           @relation("TransfersRequested", fields: [requestedByUserId], references: [id])
+  approvedByUserId  String?
+  approvedBy        User?          @relation("TransfersApproved", fields: [approvedByUserId], references: [id])
+  decidedAt         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([fromPharmacyId])
+  @@index([toPharmacyId])
+  @@index([status])
 }
