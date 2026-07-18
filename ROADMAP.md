@@ -115,10 +115,11 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Refill reminders (CASL opt-in) generated + dispatched via pluggable provider (Twilio/SendGrid stub).
 - [ ] Real WebRTC/HLS live streaming + 16-grid thumbnails; motion-event push; automated scheduled report delivery.
 
-## PHASE 6 — QA & Hardening (Months 13–15)  ← STARTED
-- [x] Automated test suite (vitest): drug-interaction engine, tax, CSV — 12 tests passing.
+## PHASE 6 — QA & Hardening (Months 13–15)  ← IN PROGRESS
+- [x] Automated unit suite (vitest): RBAC guards, JWT, MFA, drug-interaction engine, tax, CSV, barcode — 35 tests passing (`npm test`, DB-independent).
+- [x] **HTTP-level integration suite (supertest vs live DB, RLS active) — 35 tests passing (`npm run test:integration`):** auth flow (login/refresh-rotation/logout/`/me`, bad-cred + tampered-token 401s), DB-backed RBAC (owner-only endpoints 403 for partner / 200 for owner), location-scoping + RLS isolation (partner cannot list/read/write another location's patients; other-location rows are RLS-invisible → 404), and a core clinical workflow (patient → allergy/condition → dashboard/inventory reads → audit-trail assertion). Sequential single-fork config; self-cleaning test data via superuser `DIRECT_URL`.
 - [x] System health/monitoring endpoint (DB check, counts, uptime); public liveness probe.
-- [ ] Penetration testing; load test (200 concurrent users); broader integration coverage.
+- [ ] Penetration testing; load test (200 concurrent users).
 - [ ] UAT with pharmacists; training; phased rollout; DR drills.
 
 ## PHASE 7 — Platform features (from expanded brief)  ← COMPLETE (backend + client verified)

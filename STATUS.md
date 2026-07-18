@@ -41,7 +41,9 @@ https://github.com/ShahbazAli206/pharmacy_management_system (branch `main`).
 as `pharmacy_app`).
 
 **Verification:** every backend phase driven end-to-end against the live DB; Phases 8–11
-client UIs driven in real Chrome (Playwright) — 17/17. 35 vitest unit tests pass.
+client UIs driven in real Chrome (Playwright) — 17/17. 35 vitest unit tests pass, plus
+**35 HTTP-level integration tests** (supertest vs live DB, RLS active) covering
+auth/RBAC/location-scoping + a core clinical workflow.
 
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
@@ -52,7 +54,7 @@ for location-scoped writes (`76bbea3`).
 ## 🔲 LEFT (prioritized)
 
 ### 1. Phase 6 — QA & Hardening / Go-Live (the main remaining work)
-- [ ] Integration tests (HTTP-level) for auth/RBAC/scoping + core workflows (today's 35 tests are DB-independent unit tests)
+- [x] **Integration tests (HTTP-level) for auth/RBAC/scoping + core workflow — DONE.** 35 supertest tests drive the real app against the live DB with RLS active (`cd server && npm run test:integration`). Covers login/refresh-rotation/logout/`/me`, owner-only 403-vs-200 RBAC, partner location isolation (RLS-invisible → 404), and a patient→allergy→dashboard→inventory→audit workflow. Unit tests remain `npm test` (35, DB-independent); `npm run test:all` runs both.
 - [ ] Load test (spec target: 200 concurrent users)
 - [ ] Penetration testing / security review
 - [ ] Pharmacist UAT, training, phased rollout, DR drills
@@ -101,7 +103,9 @@ The local database is a **portable PostgreSQL — NOT a Windows service**, so it
 `partner1@pharmacy.ca` (Location Partner, Toronto), `pic1@pharmacy.ca` (Pharmacist-in-Charge).
 
 **Verify quickly:** `curl http://localhost:4000/api/health` → `{"status":"ok"}`.
-Run tests: `cd server && npm test` (35 pass). Typecheck: `npm run typecheck`.
+Run tests: `cd server && npm test` (35 unit, DB-independent). Integration tests
+(need DB up + seeded): `npm run test:integration` (35). Both: `npm run test:all`.
+Typecheck: `npm run typecheck`.
 
 ---
 
@@ -122,7 +126,9 @@ Run tests: `cd server && npm test` (35 pass). Typecheck: `npm run typecheck`.
 ---
 
 ## 👉 Suggested next step
-Start **Phase 6**: add HTTP-level **integration tests** for the auth/RBAC/patient-scoping
-and core Rx/POS/compliance flows (a real gap — current tests are unit-only), then a load
-test. Alternatively, wire one real external provider (e.g., S3 storage or Twilio/SendGrid)
-behind the existing pluggable interfaces.
+HTTP-level **integration tests** are now in place (`server/tests/integration/`, 35 tests).
+Next Phase-6 steps: (a) **load test** the API for the spec's 200-concurrent-user target
+(e.g. k6/autocannon against login + patient/inventory reads), and/or (b) extend integration
+coverage to the Rx-interaction 409 block and narcotics discrepancy 423 lock. Alternatively,
+wire one real external provider (e.g., S3 storage or Twilio/SendGrid) behind the existing
+pluggable interfaces.
