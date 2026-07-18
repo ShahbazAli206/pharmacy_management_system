@@ -13,7 +13,12 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  */
 export async function maintenanceGuard(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (READ_METHODS.has(req.method)) return next();
-  if (ALLOW_PREFIXES.some((p) => req.path.startsWith(p))) return next();
+  // This middleware is mounted at '/api', so Express strips that prefix from
+  // req.path (it becomes e.g. '/settings'). Rebuild the full path so the
+  // allow-list — which the auth/settings endpoints rely on to stay writable and
+  // let an operator disable maintenance mode — actually matches.
+  const fullPath = req.baseUrl + req.path;
+  if (ALLOW_PREFIXES.some((p) => fullPath.startsWith(p))) return next();
 
   try {
     if (await isMaintenanceMode()) {
