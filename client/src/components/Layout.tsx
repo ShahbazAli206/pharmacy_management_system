@@ -62,6 +62,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Inventory
             </NavLink>
           )}
+          {can('prescription:read') && (
+            <NavLink to="/prescribers" className="nav-link">
+              Prescribers
+            </NavLink>
+          )}
+          {can('narcotics:read') && (
+            <NavLink to="/narcotics" className="nav-link">
+              Narcotics
+            </NavLink>
+          )}
+          {can('recall:read') && (
+            <NavLink to="/recalls" className="nav-link">
+              Recalls
+            </NavLink>
+          )}
           {can('compliance:read') && (
             <NavLink to="/compliance" className="nav-link">
               Compliance
@@ -90,6 +105,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {(can('message:send') || can('message:broadcast')) && (
             <NavLink to="/messages" className="nav-link">
               Messages
+            </NavLink>
+          )}
+          {can('notification:manage') && (
+            <NavLink to="/notifications" className="nav-link">
+              Notifications
             </NavLink>
           )}
           {can('workflow:approve') && (

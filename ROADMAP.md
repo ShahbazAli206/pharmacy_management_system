@@ -74,7 +74,7 @@ Legend: [x] done · [~] partial · [ ] not started
 
 ## PHASE 2 — Core Pharmacy (Months 4–6)  ← COMPLETE (smoke-tested 36/36 vs live DB; client built)
 - [x] Product catalog (DIN, schedule, controlled flag, interaction classes) + inventory model (per-location item, lots with expiry).
-- [x] Prescription workflow: entry with drug snapshot, prescriber records, dispensing record, refill tracking + status.
+- [x] Prescription workflow: entry with drug snapshot, prescriber records, dispensing record, refill tracking + status. **Client: Prescribers directory page** (list + add).
 - [x] Drug-interaction engine vs. active meds; duplicate-therapy, allergy, and Beers Criteria alerts (runtime-verified).
 - [x] Interaction alerts block Rx save until pharmacist acknowledges (409 flow).
 - [x] Inventory: FEFO stock decrement, receiving, expiry alerts (30/60/90 buckets), low-stock detection, auto-generated draft POs.
@@ -94,7 +94,7 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Health Canada recall ingest → auto-match to inventory by DIN → quarantine records + CRITICAL alerts per affected location.
 - [x] License + pharmacy-permit expiry warnings (30/60/90 buckets); monthly compliance score with Green/Yellow/Red band.
 - [x] Immutable audit-log viewer (owner: all locations + filter; partner: own location only).
-- [x] Client pages: Compliance (checklist/alerts/score/licenses) and Audit Log.
+- [x] Client pages: Compliance (checklist/alerts/score/licenses), Audit Log, **Narcotics register** (controlled-substance search, running-balance ledger, record txn/count, discrepancy resolve/unlock), and **Recalls** (recall list + ingest, quarantine clear/destroy workflow).
 - [~] Recall feed is manual ingest; real MedEffect RSS/API poll (scheduled job) still to wire.
 - [ ] Fine-grained "overdue 2h after due-time" escalation (needs per-slot due times; currently end-of-day).
 
@@ -112,7 +112,7 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Camera registration + management (placement, IP, brand); health-check heartbeat + status; footage-view audit logging.
 - [x] Camera page with status grid (role-scoped: owner all, partner own).
 - [x] Internal messaging (intra-location) + owner broadcast (no cross-location leakage for partners). **Client: Messages page** — inbox with scope badges (Broadcast/Location), owner broadcast composer (all locations or one), and an auto-scoped intra-location composer for staff.
-- [x] Refill reminders (CASL opt-in) generated + dispatched via pluggable provider (Twilio/SendGrid stub).
+- [x] Refill reminders (CASL opt-in) generated + dispatched via pluggable provider (Twilio/SendGrid stub). **Client: Notifications page** — queue with status badges, generate refill reminders, dispatch pending.
 - [ ] Real WebRTC/HLS live streaming + 16-grid thumbnails; motion-event push; automated scheduled report delivery.
 
 ## PHASE 6 — QA & Hardening (Months 13–15)  ← IN PROGRESS

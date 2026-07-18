@@ -10,6 +10,10 @@ import { Inventory } from './pages/Inventory';
 import { Prescriptions } from './pages/Prescriptions';
 import { Sales } from './pages/Sales';
 import { Messages } from './pages/Messages';
+import { Prescribers } from './pages/Prescribers';
+import { Narcotics } from './pages/Narcotics';
+import { Recalls } from './pages/Recalls';
+import { Notifications } from './pages/Notifications';
 import { Compliance } from './pages/Compliance';
 import { AuditLog } from './pages/AuditLog';
 import { Finance } from './pages/Finance';
@@ -92,6 +96,46 @@ export default function App() {
           <ProtectedRoute permission="inventory:read">
             <Layout>
               <Inventory />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/prescribers"
+        element={
+          <ProtectedRoute permission="prescription:read">
+            <Layout>
+              <Prescribers />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/narcotics"
+        element={
+          <ProtectedRoute permission="narcotics:read">
+            <Layout>
+              <Narcotics />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recalls"
+        element={
+          <ProtectedRoute permission="recall:read">
+            <Layout>
+              <Recalls />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute permission="notification:manage">
+            <Layout>
+              <Notifications />
             </Layout>
           </ProtectedRoute>
         }

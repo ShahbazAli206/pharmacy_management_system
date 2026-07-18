@@ -132,12 +132,15 @@ Typecheck: `npm run typecheck`.
   receipt, daily cash-reconciliation tab. Verified in-browser (Playwright).
 - ✅ **Messages** page shipped (`client/src/pages/Messages.tsx`, route `/messages`) — inbox
   with Broadcast/Location scope badges, owner broadcast composer (all/one location), and an
-  auto-scoped intra-location composer. Verified in-browser: pharmacist inbox correctly shows
-  their location message + the owner broadcast, no cross-location leakage.
-- Next UI gaps (backend already done, no page yet): **Notification preferences**
-  (`/api/notifications`, naturally in Settings), a dedicated **Narcotics register** view, and
-  **Recalls/quarantine**. Or build the first unbuilt feature: **inter-pharmacy stock
-  transfers** (needs a new backend module + UI).
+  auto-scoped intra-location composer. Verified in-browser (no cross-location leakage).
+- ✅ **Four more pages shipped in parallel** (built by 4 concurrent agents, wired + verified
+  in-browser, 0 console errors): **Prescribers** (`/prescribers`), **Narcotics** register
+  (`/narcotics`), **Recalls**/quarantine (`/recalls`), and **Notifications** queue
+  (`/notifications`). Every backend module now has a client surface.
+- Remaining UI polish (optional): notification *preferences* (SMS/email/push per user — the
+  `/settings` page area), narcotics/recall write-flows exercised with live data, and general
+  UX passes. Or build the first unbuilt **feature**: inter-pharmacy stock transfers (new
+  backend module + UI).
 
 Testing infra already in place if needed: `npm test` (35 unit), `npm run test:integration`
 (35), `npm run loadtest` (200 users). Deferred go-live items (pen-test, managed Postgres,
