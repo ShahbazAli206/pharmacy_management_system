@@ -119,7 +119,8 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Automated unit suite (vitest): RBAC guards, JWT, MFA, drug-interaction engine, tax, CSV, barcode — 35 tests passing (`npm test`, DB-independent).
 - [x] **HTTP-level integration suite (supertest vs live DB, RLS active) — 35 tests passing (`npm run test:integration`):** auth flow (login/refresh-rotation/logout/`/me`, bad-cred + tampered-token 401s), DB-backed RBAC (owner-only endpoints 403 for partner / 200 for owner), location-scoping + RLS isolation (partner cannot list/read/write another location's patients; other-location rows are RLS-invisible → 404), and a core clinical workflow (patient → allergy/condition → dashboard/inventory reads → audit-trail assertion). Sequential single-fork config; self-cleaning test data via superuser `DIRECT_URL`.
 - [x] System health/monitoring endpoint (DB check, counts, uptime); public liveness probe.
-- [ ] Penetration testing; load test (200 concurrent users).
+- [x] **Load test — 200 concurrent users (spec target) — DONE.** autocannon harness (`npm run loadtest`) boots the app in-process (rate limiting off, logging off), pre-authenticates owner+partner, then drives 200 concurrent connections across a real dashboard/patients/inventory read mix. Enforces a pass/fail gate (p99 < 3s per spec §4.3, zero non-2xx/errors/timeouts). Local baseline: 200 conns, ~215 req/s, p99 ~1.9s, 0 errors. Rate limits are now env-configurable (`RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_MAX`; 0 disables) — production tuning + load-test enablement.
+- [ ] Penetration testing / security review.
 - [ ] UAT with pharmacists; training; phased rollout; DR drills.
 
 ## PHASE 7 — Platform features (from expanded brief)  ← COMPLETE (backend + client verified)

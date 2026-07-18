@@ -15,6 +15,14 @@ const schema = z.object({
   FIELD_ENCRYPTION_KEY: z
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, 'FIELD_ENCRYPTION_KEY must be 64 hex chars (32 bytes)'),
+
+  // Rate limiting (tunable per environment). A value <= 0 disables the limiter
+  // entirely — used for load testing, where 200 concurrent users would trip a
+  // fixed per-minute cap. Defaults preserve the original hardcoded behavior.
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60 * 1000),
+  RATE_LIMIT_MAX: z.coerce.number().default(300),
+  AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().default(20),
 });
 
 const parsed = schema.safeParse(process.env);

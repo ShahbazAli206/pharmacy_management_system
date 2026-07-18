@@ -17,17 +17,22 @@ export function createApp() {
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
   app.use(express.json({ limit: '1mb' }));
-  app.use(morgan(isProd ? 'combined' : 'dev'));
+  // HTTP request logging — silenced under NODE_ENV=test (unit/load runs) to keep
+  // output clean; on everywhere else.
+  if (env.NODE_ENV !== 'test') app.use(morgan(isProd ? 'combined' : 'dev'));
 
   // Baseline global rate limit; auth routes add a stricter one of their own.
-  app.use(
-    rateLimit({
-      windowMs: 60 * 1000,
-      max: 300,
-      standardHeaders: true,
-      legacyHeaders: false,
-    }),
-  );
+  // Configurable per environment; a max <= 0 disables it (e.g. load testing).
+  if (env.RATE_LIMIT_MAX > 0) {
+    app.use(
+      rateLimit({
+        windowMs: env.RATE_LIMIT_WINDOW_MS,
+        max: env.RATE_LIMIT_MAX,
+        standardHeaders: true,
+        legacyHeaders: false,
+      }),
+    );
+  }
 
   // Read-only lockdown when maintenance mode is enabled (settings-driven).
   app.use('/api', maintenanceGuard);

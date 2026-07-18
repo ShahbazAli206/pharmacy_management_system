@@ -55,7 +55,7 @@ for location-scoped writes (`76bbea3`).
 
 ### 1. Phase 6 — QA & Hardening / Go-Live (the main remaining work)
 - [x] **Integration tests (HTTP-level) for auth/RBAC/scoping + core workflow — DONE.** 35 supertest tests drive the real app against the live DB with RLS active (`cd server && npm run test:integration`). Covers login/refresh-rotation/logout/`/me`, owner-only 403-vs-200 RBAC, partner location isolation (RLS-invisible → 404), and a patient→allergy→dashboard→inventory→audit workflow. Unit tests remain `npm test` (35, DB-independent); `npm run test:all` runs both.
-- [ ] Load test (spec target: 200 concurrent users)
+- [x] **Load test — 200 concurrent users — DONE.** autocannon harness `cd server && npm run loadtest` (needs DB up). Boots the app in-process with rate limiting disabled, drives 200 concurrent connections over a real read mix, and gates on p99 < 3s + zero errors. Local baseline: ~215 req/s, p99 ~1.9s, 0 errors/non-2xx. Rate limits are now env-tunable (`RATE_LIMIT_MAX`/`AUTH_RATE_LIMIT_MAX`, 0 = disabled).
 - [ ] Penetration testing / security review
 - [ ] Pharmacist UAT, training, phased rollout, DR drills
 
@@ -126,9 +126,10 @@ Typecheck: `npm run typecheck`.
 ---
 
 ## 👉 Suggested next step
-HTTP-level **integration tests** are now in place (`server/tests/integration/`, 35 tests).
-Next Phase-6 steps: (a) **load test** the API for the spec's 200-concurrent-user target
-(e.g. k6/autocannon against login + patient/inventory reads), and/or (b) extend integration
-coverage to the Rx-interaction 409 block and narcotics discrepancy 423 lock. Alternatively,
-wire one real external provider (e.g., S3 storage or Twilio/SendGrid) behind the existing
-pluggable interfaces.
+HTTP-level **integration tests** (`server/tests/integration/`, 35) and a **200-user load
+test** (`server/loadtest/`, `npm run loadtest`) are both in place. Remaining Phase-6 items:
+(a) **penetration / security review** (`/security-review` on the diff, plus dependency audit
++ secret rotation), and/or (b) extend integration coverage to the Rx-interaction 409 block
+and narcotics discrepancy 423 lock. Then the go-live process work: managed Postgres, CI/CD,
+and the compliance/privacy/pharmacist sign-off gates. Alternatively, wire one real external
+provider (S3 / Twilio / SendGrid) behind the existing pluggable interfaces.

@@ -1,5 +1,6 @@
-import { Router } from 'express';
+import { Router, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
+import { env } from '../../config/env';
 import { authenticate } from '../../middleware/auth';
 import {
   forgotPasswordHandler,
@@ -15,13 +16,17 @@ import {
 
 const router = Router();
 
-// Stricter limit on auth endpoints to blunt credential-stuffing.
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Stricter limit on auth endpoints to blunt credential-stuffing. Configurable
+// per environment; a max <= 0 disables it (e.g. load testing).
+const authLimiter: RequestHandler =
+  env.AUTH_RATE_LIMIT_MAX > 0
+    ? rateLimit({
+        windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
+        max: env.AUTH_RATE_LIMIT_MAX,
+        standardHeaders: true,
+        legacyHeaders: false,
+      })
+    : (_req, _res, next) => next();
 
 router.post('/login', authLimiter, loginHandler);
 router.post('/refresh', authLimiter, refreshHandler);
