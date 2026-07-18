@@ -1,7 +1,7 @@
-import { AlertSeverity, Prisma, PrismaClient } from '@prisma/client';
-import { prisma } from '../config/prisma';
+import { AlertSeverity, Prisma } from '@prisma/client';
+import { prisma, type Db } from '../config/prisma';
 
-type Tx = Prisma.TransactionClient | PrismaClient;
+type Tx = Prisma.TransactionClient | Db;
 
 interface RaiseAlertInput {
   pharmacyId: string;

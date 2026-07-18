@@ -7,7 +7,10 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Runtime connects as the least-privilege `pharmacy_app` role (RLS-enforced).
+  url = env("DATABASE_URL")
+  // Migrations run as a superuser (RLS/DDL); falls back to url if unset.
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------------------------------------------------------------------------

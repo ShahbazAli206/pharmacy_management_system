@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { verifyAccessToken } from '../utils/jwt';
 import { unauthorized } from '../utils/httpError';
+import { runWithRlsContext } from '../config/rlsContext';
 
 /**
  * Verifies the Bearer access token, loads the user's live permission set from
@@ -35,7 +36,13 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
       permissions: new Set(user.role.permissions.map((rp) => rp.permission.key)),
     };
 
-    next();
+    // Propagate the caller's location scope to PostgreSQL RLS for the rest of
+    // this request. Owners are unrestricted; everyone else is pinned to their
+    // pharmacy at the database layer, mirroring the API-layer checks.
+    runWithRlsContext(
+      { isOwner: user.role.name === 'SYSTEM_OWNER', pharmacyId: user.pharmacyId },
+      () => next(),
+    );
   } catch (err) {
     // Normalize JWT library errors to 401.
     if (err instanceof Error && (err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError')) {

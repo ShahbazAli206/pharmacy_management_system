@@ -1,11 +1,11 @@
-import { CountPeriod, NarcoticTxnType, Prisma, PrismaClient } from '@prisma/client';
-import { prisma } from '../../config/prisma';
+import { CountPeriod, NarcoticTxnType, Prisma } from '@prisma/client';
+import { prisma, type Db } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { badRequest, notFound, HttpError } from '../../utils/httpError';
 import { raiseAlert } from '../../services/alerts';
 
-type Tx = Prisma.TransactionClient | PrismaClient;
+type Tx = Prisma.TransactionClient | Db;
 
 function scopeFor(auth: AuthContext, requested?: string): string {
   const pharmacyId = isOwner(auth) ? requested : auth.locationId;

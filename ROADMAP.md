@@ -64,7 +64,7 @@ Pharmecy_App/
 - [x] API client with automatic refresh-token rotation on 401; patients list page.
 
 ### 1.7 Phase-1 hardening
-- [x] PostgreSQL row-level security: FORCE RLS policies on Patient/Allergy/ChronicCondition + least-privilege `pharmacy_app` role, keyed on `app.is_owner`/`app.pharmacy_id` GUCs; isolation proven (scoped/owner/fail-closed/WITH-CHECK). Defense-in-depth beneath the API-layer isolation; runtime app-role cutover documented as the activation step.
+- [x] PostgreSQL row-level security **(actively enforced at runtime)**: FORCE RLS policies on Patient/Allergy/ChronicCondition + least-privilege `pharmacy_app` role, keyed on `app.is_owner`/`app.pharmacy_id` GUCs. The app connects as `pharmacy_app`; a Prisma client extension + AsyncLocalStorage set the GUCs per request (auth middleware) on every query/transaction, so a partner literally cannot read or write another location's patient data at the DB layer. Verified end-to-end (owner sees all, partner scoped, cross-location blocked, fail-closed default). Migrations/seed use a superuser via `DIRECT_URL`.
 - [x] Unit/integration tests for auth + RBAC + patient scoping (vitest, DB-independent) — 35 tests passing (was 12).
 - [x] API documentation (OpenAPI 3 at `/api/docs.json`, Swagger UI at `/api/docs`; zero new deps).
 

@@ -1,10 +1,10 @@
-import { Prisma, PrismaClient } from '@prisma/client';
-import { prisma } from '../../config/prisma';
+import { Prisma } from '@prisma/client';
+import { prisma, type Db } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { badRequest, forbidden, notFound } from '../../utils/httpError';
 
-type Tx = Prisma.TransactionClient | PrismaClient;
+type Tx = Prisma.TransactionClient | Db;
 
 /** Resolve the pharmacy an inventory action targets, enforcing isolation. */
 function scopeFor(auth: AuthContext, requested?: string): string {
