@@ -1,0 +1,62 @@
+import { Router } from 'express';
+import authRoutes from './modules/auth/auth.routes';
+import patientRoutes from './modules/patients/patients.routes';
+import dashboardRoutes from './modules/dashboard/dashboard.routes';
+import productRoutes from './modules/products/products.routes';
+import inventoryRoutes from './modules/inventory/inventory.routes';
+import prescriberRoutes from './modules/prescribers/prescribers.routes';
+import prescriptionRoutes from './modules/prescriptions/prescriptions.routes';
+import salesRoutes from './modules/sales/sales.routes';
+import complianceRoutes from './modules/compliance/compliance.routes';
+import narcoticsRoutes from './modules/narcotics/narcotics.routes';
+import recallRoutes from './modules/recalls/recalls.routes';
+import auditRoutes from './modules/audit/audit.routes';
+import financeRoutes from './modules/finance/finance.routes';
+import cameraRoutes from './modules/cameras/cameras.routes';
+import messagingRoutes from './modules/messaging/messaging.routes';
+import notificationRoutes from './modules/notifications/notifications.routes';
+import featureFlagRoutes from './modules/platform/featureFlags.routes';
+import systemRoutes from './modules/platform/system.routes';
+import searchRoutes from './modules/platform/search.routes';
+import documentRoutes from './modules/documents/documents.routes';
+import signatureRoutes from './modules/signatures/signatures.routes';
+import importRoutes from './modules/imports/imports.routes';
+import settingsRoutes from './modules/settings/settings.routes';
+import reportRoutes from './modules/reports/reports.routes';
+import workflowRoutes from './modules/workflow/workflow.routes';
+import adminToolsRoutes from './modules/admin/adminTools.routes';
+
+const router = Router();
+
+router.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'pharmacy-api', time: new Date().toISOString() });
+});
+
+router.use('/auth', authRoutes);
+router.use('/patients', patientRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/products', productRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/prescribers', prescriberRoutes);
+router.use('/prescriptions', prescriptionRoutes);
+router.use('/sales', salesRoutes);
+router.use('/compliance', complianceRoutes);
+router.use('/narcotics', narcoticsRoutes);
+router.use('/recalls', recallRoutes);
+router.use('/audit', auditRoutes);
+router.use('/finance', financeRoutes);
+router.use('/cameras', cameraRoutes);
+router.use('/messages', messagingRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/feature-flags', featureFlagRoutes);
+router.use('/system', systemRoutes);
+router.use('/search', searchRoutes);
+router.use('/documents', documentRoutes);
+router.use('/signatures', signatureRoutes);
+router.use('/imports', importRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/reports', reportRoutes);
+router.use('/workflow', workflowRoutes);
+router.use('/admin', adminToolsRoutes);
+
+export default router;

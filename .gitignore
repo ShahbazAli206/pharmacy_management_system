@@ -1,0 +1,45 @@
+# ---- Dependencies ----
+node_modules/
+**/node_modules/
+
+# ---- Build output ----
+dist/
+dist-ssr/
+build/
+**/dist/
+**/build/
+.vite/
+**/.vite/
+
+# ---- Secrets / environment ----
+# NOTE: client/.env holds only a non-secret localhost API URL and IS committed
+# on purpose so the app configures itself on any machine. Real secrets belong
+# in server/.env (ignored below) and are described in server/.env.example.
+.env.local
+.env.*.local
+server/.env
+
+# ---- Logs ----
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Test / coverage ----
+coverage/
+**/coverage/
+
+# ---- Editor / OS ----
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.sw?
+
+# ---- Misc ----
+*.local

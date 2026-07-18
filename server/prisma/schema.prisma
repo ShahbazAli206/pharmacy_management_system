@@ -1,0 +1,1029 @@
+// Pharmacy Management System — Phase 1 data model
+// Designed for 16 locations now; scales to 50 without schema changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Roles & permission matrix (centralized in DB — never hardcoded in frontend)
+// ---------------------------------------------------------------------------
+
+enum RoleName {
+  SYSTEM_OWNER
+  LOCATION_PARTNER
+  PHARMACIST_IN_CHARGE
+  PHARMACY_TECHNICIAN
+  CASHIER
+  INVENTORY_MANAGER
+  ACCOUNTANT
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        RoleName         @unique
+  description String
+  // A role is location-scoped unless it is the system owner.
+  isGlobal    Boolean          @default(false)
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  // e.g. "patient:read", "patient:write", "dashboard:owner", "user:manage"
+  key         String           @unique
+  description String
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ---------------------------------------------------------------------------
+// Locations & users
+// ---------------------------------------------------------------------------
+
+enum Province {
+  ON
+  BC
+  AB
+  MB
+  SK
+  QC
+  NS
+  NB
+  NL
+  PE
+  NT
+  YT
+  NU
+}
+
+enum PharmacyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Pharmacy {
+  id             String         @id @default(uuid())
+  name           String
+  code           String         @unique // short label, e.g. "PH-ON-001"
+  province       Province
+  regulatoryBody String // OCP, CPBC, ACP, ...
+  addressLine1   String
+  addressLine2   String?
+  city           String
+  postalCode     String
+  phone          String?
+  status         PharmacyStatus @default(ACTIVE)
+  users          User[]
+  patients       Patient[]
+  auditLogs      AuditLog[]
+  suppliers      Supplier[]
+  inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+  prescribers    Prescriber[]
+  prescriptions  Prescription[]
+  sales          Sale[]
+  permitExpiry       DateTime?
+  complianceRecords  ComplianceRecord[]
+  complianceAlerts   ComplianceAlert[]
+  narcoticTxns       NarcoticTxn[]
+  narcoticCounts     NarcoticCount[]
+  quarantines        QuarantineRecord[]
+  expenses           Expense[]
+  partnerOwnerships  PartnerOwnership[]
+  budgets            Budget[]
+  cameras            Camera[]
+  messages           Message[]
+  notifications      Notification[]
+  featureFlags       FeatureFlag[]
+  documents          Document[]
+  savedReports       SavedReport[]
+  workflowRequests   WorkflowRequest[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  roleId        String
+  role          Role       @relation(fields: [roleId], references: [id])
+  // Null for SYSTEM_OWNER (spans all locations); required for everyone else.
+  pharmacyId    String?
+  pharmacy      Pharmacy?  @relation(fields: [pharmacyId], references: [id])
+  isActive      Boolean    @default(true)
+  // MFA (TOTP) scaffolding
+  mfaEnabled    Boolean    @default(false)
+  mfaSecret     String? // encrypted at rest
+  // License tracking (pharmacists/technicians)
+  licenseNumber String?
+  licenseExpiry DateTime?
+  lastLoginAt   DateTime?
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  purchaseOrders       PurchaseOrder[]    @relation("POCreatedBy")
+  prescriptionsCreated Prescription[]     @relation("RxCreatedBy")
+  dispensings          DispensingRecord[]
+  sales                Sale[]             @relation("SaleCashier")
+  complianceCompleted  ComplianceRecord[] @relation("ComplianceCompletedBy")
+  narcoticTxns         NarcoticTxn[]      @relation("NarcoticPerformedBy")
+  narcoticCounts       NarcoticCount[]    @relation("NarcoticCountedBy")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([pharmacyId])
+  @@index([roleId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Patients (PII field-level encrypted — see src/utils/crypto.ts)
+// ---------------------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNDISCLOSED
+}
+
+model Patient {
+  id                 String             @id @default(uuid())
+  pharmacyId         String
+  pharmacy           Pharmacy           @relation(fields: [pharmacyId], references: [id])
+  firstName          String
+  lastName           String
+  dateOfBirth        DateTime
+  gender             Gender
+  preferredLanguage  String             @default("en")
+  // Encrypted at rest (AES-256-GCM). Stored as "iv:tag:ciphertext" hex.
+  healthCardEnc      String?
+  insurancePlanEnc   String?
+  phone              String?
+  email              String?
+  addressLine1       String?
+  city               String?
+  postalCode         String?
+  emergencyContact   String?
+  smsOptIn           Boolean            @default(false)
+  emailOptIn         Boolean            @default(false)
+  allergies          Allergy[]
+  conditions         ChronicCondition[]
+  prescriptions      Prescription[]
+  sales              Sale[]
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([pharmacyId])
+  @@index([lastName, firstName])
+}
+
+enum Severity {
+  LOW
+  MODERATE
+  HIGH
+  SEVERE
+}
+
+model Allergy {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  substance String
+  reaction  String?
+  severity  Severity @default(MODERATE)
+  createdAt DateTime @default(now())
+
+  @@index([patientId])
+}
+
+model ChronicCondition {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  name      String
+  diagnosis String?
+  createdAt DateTime @default(now())
+
+  @@index([patientId])
+}
+
+// ---------------------------------------------------------------------------
+// Append-only audit trail (10-year retention). No update/delete in app code.
+// ---------------------------------------------------------------------------
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXPORT
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id])
+  pharmacyId String?
+  pharmacy   Pharmacy?   @relation(fields: [pharmacyId], references: [id])
+  action     AuditAction
+  entity     String // e.g. "Patient", "User", "Auth"
+  entityId   String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  @@index([userId])
+  @@index([pharmacyId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 2 — Product catalog, inventory, prescriptions, dispensing, POS
+// Money is stored as integer cents to keep arithmetic exact.
+// ---------------------------------------------------------------------------
+
+enum DosageForm {
+  TABLET
+  CAPSULE
+  LIQUID
+  CREAM
+  OINTMENT
+  INJECTION
+  INHALER
+  DROPS
+  PATCH
+  SUPPOSITORY
+  OTHER
+}
+
+// CDSA-aligned scheduling for controlled-substance flagging.
+enum DrugSchedule {
+  UNSCHEDULED
+  OTC
+  SCHEDULE_I
+  SCHEDULE_II
+  SCHEDULE_III
+  NARCOTIC
+  CONTROLLED
+  TARGETED
+}
+
+// Product catalog is global (shared DIN database); stock is per-location.
+model Product {
+  id           String       @id @default(uuid())
+  din          String       @unique // Health Canada Drug Identification Number
+  name         String
+  genericName  String?
+  isGeneric    Boolean      @default(false)
+  strength     String
+  form         DosageForm
+  manufacturer String?
+  schedule     DrugSchedule @default(UNSCHEDULED)
+  isControlled Boolean      @default(false)
+  defaultPriceCents Int     @default(0)
+  // Comma-separated interaction class tags used by the interaction engine
+  // (e.g. "nsaid,anticoagulant"). Real deployment swaps this for a DB feed.
+  interactionClasses String  @default("")
+  inventoryItems InventoryItem[]
+  prescriptions  Prescription[]
+  purchaseOrderLines PurchaseOrderLine[]
+  narcoticTxns   NarcoticTxn[]
+  narcoticCounts NarcoticCount[]
+  quarantines    QuarantineRecord[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([name])
+}
+
+model Supplier {
+  id             String          @id @default(uuid())
+  pharmacyId     String
+  pharmacy       Pharmacy        @relation(fields: [pharmacyId], references: [id])
+  name           String
+  contactName    String?
+  phone          String?
+  email          String?
+  leadTimeDays   Int?
+  purchaseOrders PurchaseOrder[]
+  inventoryItems InventoryItem[]
+  createdAt      DateTime        @default(now())
+
+  @@index([pharmacyId])
+}
+
+// One per (pharmacy, product): holds reorder policy + owns the stock lots.
+model InventoryItem {
+  id               String     @id @default(uuid())
+  pharmacyId       String
+  pharmacy         Pharmacy   @relation(fields: [pharmacyId], references: [id])
+  productId        String
+  product          Product    @relation(fields: [productId], references: [id])
+  reorderThreshold Int        @default(0)
+  reorderQuantity  Int        @default(0)
+  supplierId       String?
+  supplier         Supplier?  @relation(fields: [supplierId], references: [id])
+  lots             StockLot[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@unique([pharmacyId, productId])
+  @@index([pharmacyId])
+}
+
+model StockLot {
+  id              String        @id @default(uuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  lotNumber       String?
+  expiryDate      DateTime?
+  quantityOnHand  Int           @default(0)
+  unitCostCents   Int           @default(0)
+  dispensings     DispensingRecord[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([inventoryItemId])
+  @@index([expiryDate])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id              String              @id @default(uuid())
+  pharmacyId      String
+  pharmacy        Pharmacy            @relation(fields: [pharmacyId], references: [id])
+  supplierId      String?
+  supplier        Supplier?           @relation(fields: [supplierId], references: [id])
+  status          PurchaseOrderStatus @default(DRAFT)
+  autoGenerated   Boolean             @default(false)
+  createdByUserId String?
+  createdBy       User?               @relation("POCreatedBy", fields: [createdByUserId], references: [id])
+  lines           PurchaseOrderLine[]
+  receivedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([pharmacyId])
+}
+
+model PurchaseOrderLine {
+  id               String        @id @default(uuid())
+  purchaseOrderId  String
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id])
+  quantityOrdered  Int
+  quantityReceived Int           @default(0)
+  unitCostCents    Int           @default(0)
+
+  @@index([purchaseOrderId])
+}
+
+model Prescriber {
+  id                String         @id @default(uuid())
+  pharmacyId        String
+  pharmacy          Pharmacy       @relation(fields: [pharmacyId], references: [id])
+  firstName         String
+  lastName          String
+  collegeRegNumber  String
+  phone             String?
+  fax               String?
+  prescriptions     Prescription[]
+  createdAt         DateTime       @default(now())
+
+  @@index([pharmacyId])
+  @@index([lastName])
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+model Prescription {
+  id                 String             @id @default(uuid())
+  pharmacyId         String
+  pharmacy           Pharmacy           @relation(fields: [pharmacyId], references: [id])
+  patientId          String
+  patient            Patient            @relation(fields: [patientId], references: [id])
+  prescriberId       String
+  prescriber         Prescriber         @relation(fields: [prescriberId], references: [id])
+  productId          String
+  product            Product            @relation(fields: [productId], references: [id])
+  // Snapshots of drug details at time of writing (product may change later).
+  din                String
+  drugName           String
+  strength           String
+  form               DosageForm
+  directions         String // the "sig"
+  quantity           Int
+  refillsAuthorized  Int                @default(0)
+  refillsUsed        Int                @default(0)
+  isControlled       Boolean            @default(false)
+  status             PrescriptionStatus @default(ACTIVE)
+  // Encrypted-storage path to the retained original scan (never deleted).
+  scannedImagePath   String?
+  createdByUserId    String?
+  createdBy          User?              @relation("RxCreatedBy", fields: [createdByUserId], references: [id])
+  dispensings        DispensingRecord[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([pharmacyId])
+  @@index([patientId])
+  @@index([status])
+}
+
+model DispensingRecord {
+  id               String       @id @default(uuid())
+  prescriptionId   String
+  prescription     Prescription @relation(fields: [prescriptionId], references: [id])
+  pharmacistUserId String
+  pharmacist       User         @relation(fields: [pharmacistUserId], references: [id])
+  dispensedAt      DateTime     @default(now())
+  quantity         Int
+  dinDispensed     String
+  lotNumber        String?
+  expiryDate       DateTime?
+  stockLotId       String?
+  stockLot         StockLot?    @relation(fields: [stockLotId], references: [id])
+  counsellingNotes String?
+
+  @@index([prescriptionId])
+  @@index([pharmacistUserId])
+}
+
+enum PaymentMethod {
+  CASH
+  DEBIT
+  CREDIT
+  INSURANCE
+}
+
+enum SaleItemType {
+  OTC
+  RX
+  COMPOUND
+  SERVICE
+}
+
+model Sale {
+  id             String        @id @default(uuid())
+  pharmacyId     String
+  pharmacy       Pharmacy      @relation(fields: [pharmacyId], references: [id])
+  cashierUserId  String
+  cashier        User          @relation("SaleCashier", fields: [cashierUserId], references: [id])
+  patientId      String?
+  patient        Patient?      @relation(fields: [patientId], references: [id])
+  province       Province
+  subtotalCents  Int
+  taxCents       Int
+  totalCents     Int
+  paymentMethod  PaymentMethod
+  lines          SaleLine[]
+  createdAt      DateTime      @default(now())
+
+  @@index([pharmacyId])
+  @@index([createdAt])
+}
+
+model SaleLine {
+  id             String       @id @default(uuid())
+  saleId         String
+  sale           Sale         @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  itemType       SaleItemType
+  description    String
+  productId      String?
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+  taxable        Boolean      @default(true)
+
+  @@index([saleId])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 3 — Compliance checklists, narcotics register, recalls, alerts
+// ---------------------------------------------------------------------------
+
+enum ComplianceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  ANNUAL
+}
+
+enum ComplianceStatus {
+  PENDING
+  COMPLETED
+  OVERDUE
+}
+
+// Global task definitions; instances are generated per pharmacy per due date.
+model ComplianceTaskTemplate {
+  id                String              @id @default(uuid())
+  key               String              @unique
+  title             String
+  description       String?
+  frequency         ComplianceFrequency
+  timesPerDay       Int                 @default(1)
+  requiresSignature Boolean             @default(false)
+  active            Boolean             @default(true)
+  records           ComplianceRecord[]
+  createdAt         DateTime            @default(now())
+}
+
+model ComplianceRecord {
+  id                String                 @id @default(uuid())
+  pharmacyId        String
+  pharmacy          Pharmacy               @relation(fields: [pharmacyId], references: [id])
+  templateId        String
+  template          ComplianceTaskTemplate @relation(fields: [templateId], references: [id])
+  dueDate           DateTime // date the task is due (midnight-anchored)
+  slot              Int                    @default(0) // e.g. 0 = morning, 1 = closing
+  label             String
+  status            ComplianceStatus       @default(PENDING)
+  completedByUserId String?
+  completedBy       User?                  @relation("ComplianceCompletedBy", fields: [completedByUserId], references: [id])
+  completedAt       DateTime?
+  signature         String?
+  notes             String?
+  createdAt         DateTime               @default(now())
+
+  @@unique([pharmacyId, templateId, dueDate, slot])
+  @@index([pharmacyId, dueDate])
+  @@index([status])
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model ComplianceAlert {
+  id               String        @id @default(uuid())
+  pharmacyId       String
+  pharmacy         Pharmacy      @relation(fields: [pharmacyId], references: [id])
+  type             String // e.g. "OVERDUE_TASK", "NARCOTIC_DISCREPANCY", "RECALL", "LICENSE_EXPIRY"
+  severity         AlertSeverity
+  message          String
+  status           AlertStatus   @default(OPEN)
+  relatedType      String?
+  relatedId        String?
+  resolvedByUserId String?
+  resolvedAt       DateTime?
+  createdAt        DateTime      @default(now())
+
+  @@index([pharmacyId, status])
+  @@index([type])
+}
+
+enum NarcoticTxnType {
+  RECEIPT
+  DISPENSE
+  ADJUSTMENT
+  COUNT_ADJUSTMENT
+  DESTRUCTION
+  TRANSFER
+}
+
+// Running-balance ledger for controlled substances (CDSA / NAPRA register).
+model NarcoticTxn {
+  id               String          @id @default(uuid())
+  pharmacyId       String
+  pharmacy         Pharmacy        @relation(fields: [pharmacyId], references: [id])
+  productId        String
+  product          Product         @relation(fields: [productId], references: [id])
+  type             NarcoticTxnType
+  quantityChange   Int // signed: receipts positive, dispenses negative
+  balanceAfter     Int
+  referenceType    String?
+  referenceId      String?
+  performedByUserId String
+  performedBy      User            @relation("NarcoticPerformedBy", fields: [performedByUserId], references: [id])
+  notes            String?
+  createdAt        DateTime        @default(now())
+
+  @@index([pharmacyId, productId, createdAt])
+}
+
+enum CountPeriod {
+  MORNING
+  CLOSING
+  SPOT
+}
+
+enum CountStatus {
+  BALANCED
+  DISCREPANCY
+  RESOLVED
+}
+
+model NarcoticCount {
+  id                String      @id @default(uuid())
+  pharmacyId        String
+  pharmacy          Pharmacy    @relation(fields: [pharmacyId], references: [id])
+  productId         String
+  product           Product     @relation(fields: [productId], references: [id])
+  period            CountPeriod
+  countedQuantity   Int
+  expectedQuantity  Int
+  discrepancy       Int // counted - expected
+  status            CountStatus @default(BALANCED)
+  countedByUserId   String
+  countedBy         User        @relation("NarcoticCountedBy", fields: [countedByUserId], references: [id])
+  resolvedByUserId  String?
+  resolvedAt        DateTime?
+  notes             String?
+  createdAt         DateTime    @default(now())
+
+  @@index([pharmacyId, productId])
+  @@index([status])
+}
+
+enum RecallRisk {
+  TYPE_I
+  TYPE_II
+  TYPE_III
+}
+
+// Global recall feed (Health Canada MedEffect). Matched to inventory by DIN.
+model DrugRecall {
+  id           String             @id @default(uuid())
+  source       String             @default("Health Canada MedEffect")
+  recallNumber String             @unique
+  din          String?
+  productName  String
+  reason       String
+  risk         RecallRisk
+  publishedAt  DateTime
+  quarantines  QuarantineRecord[]
+  createdAt    DateTime           @default(now())
+
+  @@index([din])
+}
+
+enum QuarantineStatus {
+  QUARANTINED
+  CLEARED
+  DESTROYED
+}
+
+model QuarantineRecord {
+  id              String           @id @default(uuid())
+  pharmacyId      String
+  pharmacy        Pharmacy         @relation(fields: [pharmacyId], references: [id])
+  recallId        String
+  recall          DrugRecall       @relation(fields: [recallId], references: [id])
+  productId       String
+  product         Product          @relation(fields: [productId], references: [id])
+  status          QuarantineStatus @default(QUARANTINED)
+  quantityAffected Int
+  notes           String?
+  clearedAt       DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@unique([pharmacyId, recallId, productId])
+  @@index([pharmacyId, status])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 4 — Financials: expenses (with approval), profit sharing, budgets
+// User references here are plain ID columns (no FK back-relation) to keep the
+// User model lean; pharmacy scoping uses real relations.
+// ---------------------------------------------------------------------------
+
+enum ExpenseCategory {
+  RENT_OCCUPANCY
+  PAYROLL
+  UTILITIES
+  BANK_FINANCING
+  INSURANCE
+  PROFESSIONAL_FEES
+  MARKETING
+  IT_TECHNOLOGY
+  INVENTORY_PURCHASES
+  REPAIRS_MAINTENANCE
+  MISCELLANEOUS
+}
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model Expense {
+  id                String          @id @default(uuid())
+  pharmacyId        String
+  pharmacy          Pharmacy        @relation(fields: [pharmacyId], references: [id])
+  category          ExpenseCategory
+  subType           String?
+  description       String
+  amountCents       Int
+  taxCents          Int             @default(0)
+  vendor            String?
+  incurredOn        DateTime
+  dueDate           DateTime?
+  recurring         Boolean         @default(false)
+  renewalDate       DateTime? // for rent/insurance/license renewal alerts
+  attachmentPath    String?
+  status            ExpenseStatus   @default(DRAFT)
+  submittedByUserId String
+  approvedByUserId  String?
+  approvedAt        DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([pharmacyId, incurredOn])
+  @@index([category])
+  @@index([status])
+}
+
+model PartnerOwnership {
+  id             String   @id @default(uuid())
+  pharmacyId     String
+  pharmacy       Pharmacy @relation(fields: [pharmacyId], references: [id])
+  userId         String // the partner
+  partnerName    String
+  basisPoints    Int // ownership share in basis points (10000 = 100%)
+  createdAt      DateTime @default(now())
+
+  @@unique([pharmacyId, userId])
+  @@index([pharmacyId])
+}
+
+model Budget {
+  id         String          @id @default(uuid())
+  pharmacyId String
+  pharmacy   Pharmacy        @relation(fields: [pharmacyId], references: [id])
+  category   ExpenseCategory
+  month      DateTime // first day of the budgeted month
+  amountCents Int
+  createdAt  DateTime        @default(now())
+
+  @@unique([pharmacyId, category, month])
+  @@index([pharmacyId])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 5 — Cameras, messaging, notifications
+// ---------------------------------------------------------------------------
+
+enum CameraStatus {
+  ONLINE
+  OFFLINE
+  UNKNOWN
+}
+
+model Camera {
+  id         String       @id @default(uuid())
+  pharmacyId String
+  pharmacy   Pharmacy     @relation(fields: [pharmacyId], references: [id])
+  label      String
+  placement  String // dispensing counter, entrance, safe/narcotics, server room
+  brand      String?
+  model      String?
+  ipAddress  String
+  streamUrl  String? // RTSP/HLS/WebRTC endpoint (proxied in production)
+  status     CameraStatus @default(UNKNOWN)
+  lastSeenAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([pharmacyId])
+}
+
+enum MessageScope {
+  LOCATION
+  BROADCAST
+}
+
+model Message {
+  id           String       @id @default(uuid())
+  senderUserId String
+  senderName   String
+  scope        MessageScope
+  // Target location for LOCATION scope; null for BROADCAST (all locations).
+  pharmacyId   String?
+  pharmacy     Pharmacy?    @relation(fields: [pharmacyId], references: [id])
+  subject      String?
+  body         String
+  createdAt    DateTime     @default(now())
+
+  @@index([pharmacyId])
+  @@index([createdAt])
+}
+
+enum NotificationChannel {
+  SMS
+  EMAIL
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Notification {
+  id         String              @id @default(uuid())
+  pharmacyId String?
+  pharmacy   Pharmacy?           @relation(fields: [pharmacyId], references: [id])
+  recipientUserId String?
+  patientId  String?
+  channel    NotificationChannel
+  type       String // REFILL_REMINDER, RECALL, REPORT, ...
+  subject    String?
+  message    String
+  status     NotificationStatus  @default(PENDING)
+  sentAt     DateTime?
+  error      String?
+  createdAt  DateTime            @default(now())
+
+  @@index([pharmacyId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 6/7 — Platform: feature flags (per pharmacy or global)
+// ---------------------------------------------------------------------------
+
+model FeatureFlag {
+  id          String    @id @default(uuid())
+  key         String
+  description String?
+  // Null pharmacy = global default; a per-pharmacy row overrides the global.
+  pharmacyId  String?
+  pharmacy    Pharmacy? @relation(fields: [pharmacyId], references: [id])
+  enabled     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([key, pharmacyId])
+  @@index([key])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 8 — Documents, e-signature, bulk import
+// ---------------------------------------------------------------------------
+
+model Document {
+  id               String             @id @default(uuid())
+  pharmacyId       String?
+  pharmacy         Pharmacy?          @relation(fields: [pharmacyId], references: [id])
+  name             String
+  category         String // POLICY, LEASE, LICENSE, INVOICE, CONSENT, OTHER
+  storagePath      String // local path or S3 key (see src/services/storage.ts)
+  mimeType         String
+  sizeBytes        Int
+  uploadedByUserId String
+  signatureRequests SignatureRequest[]
+  createdAt        DateTime           @default(now())
+
+  @@index([pharmacyId])
+  @@index([category])
+}
+
+enum SignatureStatus {
+  PENDING
+  SIGNED
+  DECLINED
+}
+
+model SignatureRequest {
+  id            String          @id @default(uuid())
+  documentId    String
+  document      Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  signerName    String
+  signerEmail   String
+  status        SignatureStatus @default(PENDING)
+  signatureData String? // captured signature (data URL) or provider envelope id
+  signedAt      DateTime?
+  createdAt     DateTime        @default(now())
+
+  @@index([documentId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 9 — Platform config: settings, maintenance mode, notification prefs
+// ---------------------------------------------------------------------------
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String // JSON-encoded scalar/object
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationPreference {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  sms       Boolean  @default(true)
+  email     Boolean  @default(true)
+  push      Boolean  @default(true)
+  inApp     Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 10 — Saved / custom reports
+// ---------------------------------------------------------------------------
+
+model SavedReport {
+  id           String   @id @default(uuid())
+  name         String
+  type         String // SALES_BY_DAY, EXPENSES_BY_CATEGORY, RX_VOLUME, ...
+  paramsJson   String   @default("{}")
+  pharmacyId   String?
+  pharmacy     Pharmacy? @relation(fields: [pharmacyId], references: [id])
+  ownerUserId  String
+  createdAt    DateTime @default(now())
+
+  @@index([ownerUserId])
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 11 — Generic approval workflow engine
+// ---------------------------------------------------------------------------
+
+enum WorkflowStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model WorkflowRequest {
+  id               String         @id @default(uuid())
+  pharmacyId       String
+  pharmacy         Pharmacy       @relation(fields: [pharmacyId], references: [id])
+  entityType       String // Expense, InterPharmacyTransfer, PatientMerge, ...
+  entityId         String
+  action           String
+  status           WorkflowStatus @default(PENDING)
+  requestedByUserId String
+  decidedByUserId  String?
+  decidedAt        DateTime?
+  reason           String?
+  createdAt        DateTime       @default(now())
+
+  @@index([pharmacyId, status])
+  @@index([entityType, entityId])
+}

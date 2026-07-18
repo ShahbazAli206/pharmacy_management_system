@@ -1,0 +1,512 @@
+You are a Senior Enterprise Software Architect and Principal Full Stack Engineer.
+
+Your task is to build a production-ready Enterprise Multi-Location Pharmacy Management System for Canada.
+
+This is NOT a prototype.
+
+This is NOT an MVP.
+
+This is a scalable SaaS platform designed for 16+ pharmacy locations with the ability to scale to 50+ locations.
+
+Development Principles
+
+Follow these principles throughout the project.
+
+Clean Architecture
+Domain Driven Design (DDD)
+SOLID Principles
+Repository Pattern
+Service Layer
+Feature Based Folder Structure
+Type Safety
+Reusable Components
+Atomic UI Design
+Enterprise RBAC
+API First
+Mobile Responsive
+High Performance
+Accessibility (WCAG)
+Dark Mode Ready
+Localization Ready
+Multi Tenant Ready
+
+Never create messy code.
+
+Never duplicate business logic.
+
+Every feature must be modular.
+
+Technology Stack
+
+Frontend
+
+React
+TypeScript
+Tailwind
+ShadCN
+React Query
+React Hook Form
+Zod
+React Router
+
+Backend
+
+Node.js
+Express
+PostgreSQL
+Prisma ORM
+Redis
+JWT
+Bull Queue
+
+Infrastructure
+
+Docker
+AWS
+S3
+CloudFront
+
+Authentication
+
+JWT
+MFA
+Refresh Tokens
+
+Storage
+
+Encrypted
+
+Audit Logs
+
+Immutable
+
+System Architecture
+
+Generate complete project architecture before coding.
+
+Include
+
+Frontend
+
+Backend
+
+Database
+
+Services
+
+Modules
+
+Shared Components
+
+Utilities
+
+Configurations
+
+API
+
+Authentication
+
+Authorization
+
+Validation
+
+Logging
+
+Notifications
+
+Jobs
+
+Reports
+
+Exports
+
+Camera Services
+
+OCR Services
+
+Payment Services
+
+Compliance Services
+
+Pages
+
+Generate complete routing.
+
+For every page include
+
+Purpose
+
+Components
+
+API Used
+
+Permissions
+
+Validation
+
+Business Logic
+
+UI Sections
+
+Loading States
+
+Error States
+
+Empty States
+
+Export Options
+
+Include pages such as
+
+Login
+
+Forgot Password
+
+Dashboard
+
+Owner Dashboard
+
+Partner Dashboard
+
+Patients
+
+Patient Details
+
+Prescription
+
+Prescription History
+
+Prescription OCR
+
+Drug Interaction
+
+Inventory
+
+Purchase Orders
+
+Suppliers
+
+Drug Recalls
+
+Controlled Drugs
+
+Narcotics Register
+
+Sales
+
+POS
+
+Expenses
+
+Finance
+
+Profit & Loss
+
+Payroll
+
+Reports
+
+Analytics
+
+Compliance
+
+Daily Checklist
+
+Inspection
+
+Camera Management
+
+Camera Live View
+
+Notifications
+
+Messaging
+
+Staff
+
+Attendance
+
+Schedules
+
+Licenses
+
+Training
+
+Settings
+
+Roles
+
+Permissions
+
+Audit Logs
+
+API Keys
+
+Profile
+
+Support
+
+System Logs
+
+Feature Flags
+
+Folder Structure
+
+Generate enterprise folder structure.
+
+Example
+
+src/
+
+components/
+
+features/
+
+hooks/
+
+services/
+
+contexts/
+
+layouts/
+
+pages/
+
+utils/
+
+types/
+
+constants/
+
+assets/
+
+styles/
+
+config/
+
+api/
+
+
+Backend
+
+src/
+
+controllers/
+
+services/
+
+repositories/
+
+middleware/
+
+validators/
+
+routes/
+
+models/
+
+jobs/
+
+events/
+
+queues/
+
+config/
+
+utils/
+
+logs/
+
+Database
+
+Generate
+
+ER Diagram
+
+Relationships
+
+Primary Keys
+
+Indexes
+
+Constraints
+
+Soft Deletes
+
+Audit Tables
+
+History Tables
+
+Tenant Isolation
+
+UI
+
+Professional
+
+Modern
+
+Minimal
+
+Medical Theme
+
+Responsive
+
+Fast
+
+Dashboard Cards
+
+Charts
+
+Tables
+
+Filters
+
+Advanced Search
+
+Export Buttons
+
+Breadcrumbs
+
+Notifications
+
+Modals
+
+Drawers
+
+Quick Actions
+
+Functional Requirements
+
+Implement every feature from the attached SRS.
+
+Never skip any functionality.
+
+Every page must be production ready.
+
+Additional Features
+
+Also include
+
+Workflow Engine
+
+Approval System
+
+Activity Timeline
+
+Global Search
+
+Universal Filters
+
+Saved Reports
+
+Custom Dashboard
+
+Feature Flags
+
+Document Manager
+
+Advanced Notification Center
+
+Audit Explorer
+
+API Monitoring
+
+Health Dashboard
+
+System Status
+
+Role Simulator
+
+Custom Fields
+
+Bulk Actions
+
+Bulk Import
+
+Bulk Export
+
+Keyboard Shortcuts
+
+Theme Manager
+
+Localization
+
+Timezone Management
+
+Currency Settings
+
+Province Configuration
+
+Backup Manager
+
+Restore Manager
+
+Maintenance Mode
+
+Data Retention Settings
+
+Code Quality
+
+Generate
+
+Reusable Components
+
+Reusable Hooks
+
+Reusable Services
+
+Reusable APIs
+
+Reusable Types
+
+Reusable Validation
+
+Reusable Tables
+
+Reusable Forms
+
+Reusable Charts
+
+Reusable Dialogs
+
+Reusable Layouts
+
+Reusable Permissions
+
+Always think like a senior software architect.
+
+Never build one page independently.
+
+Always build the entire architecture first.
+
+Then implement module by module.
+
+Additional features I would add (not explicitly in your SRS)
+
+Your document is excellent, but I would also include:
+
+Global search across patients, prescriptions, inventory, and invoices
+Configurable workflow engine
+Draft/approval system for sensitive changes
+Feature flags per pharmacy
+Role simulator for testing permissions
+Document management center
+Dashboard customization
+System health monitoring
+API monitoring
+Error reporting dashboard
+Backup/restore dashboard
+Maintenance mode
+Province-based configuration
+Custom report builder
+Data import wizard (Excel/CSV)
+Audit explorer with advanced filters
+Barcode & QR code support
+Label printing module
+E-signature management
+In-app onboarding/tutorials
+Offline synchronization conflict resolution
+Multi-language support
+Theme customization
+Notification preferences
+Advanced analytics with forecasting
