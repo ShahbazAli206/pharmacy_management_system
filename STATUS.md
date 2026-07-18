@@ -36,9 +36,9 @@ https://github.com/ShahbazAli206/pharmacy_management_system (branch `main`).
 | **10 Reporting** | sales-by-day / expenses-by-category / Rx-volume / **sales forecast**, saved reports | ✅ Smoke · **client ✅ (new)** |
 | **11 Workflow/admin** | Generic approval engine (no self-approval), role simulator, activity timeline, Code39 barcode | ✅ Smoke · **client ✅ (new)** |
 
-**Infra done:** live PostgreSQL 17 (portable, `:5433`), 3 migrations applied, seed run
-(16 pharmacies + full permission matrix), **RLS runtime cutover active** (app connects
-as `pharmacy_app`).
+**Infra done:** live PostgreSQL 17 (portable, `:5433`), **4 migrations applied** (incl.
+`inter_pharmacy_transfers`), seed run (16 pharmacies + full permission matrix), **RLS
+runtime cutover active** (app connects as `pharmacy_app`).
 
 **Verification:** every backend phase driven end-to-end against the live DB; Phases 8–11
 client UIs driven in real Chrome (Playwright) — 17/17. 35 vitest unit tests pass, plus
@@ -48,6 +48,17 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19) — all committed + browser/API verified
+- **Phase 6 QA:** 35 HTTP integration tests (`test:integration`) + 200-user load test
+  (`loadtest`, p99 ~1.9s / 0 errors); rate limits made env-tunable.
+- **New client pages** (every backend module now has a UI): Point of Sale, Messages
+  (+ broadcast), Prescribers, Narcotics register, Recalls/quarantine, Notifications queue,
+  and **Staff / user management**.
+- **New feature — Inter-pharmacy transfers:** `StockTransfer` model + migration, request →
+  owner approval → atomic FEFO move; controlled-substance registers balanced. New
+  `GET /pharmacies` directory + `POST/GET/PATCH /users` staff endpoints.
+- **UI:** persisted dark mode + theme tokens; fixed `.btn-ghost` contrast bug.
 
 ---
 
@@ -78,8 +89,14 @@ for location-scoped writes (`76bbea3`).
 - [ ] Privacy-lawyer review for PIPEDA + provincial acts
 - [ ] Pharmacist UAT sign-off
 
-### 5. Smaller roadmapped items
-- [ ] i18n / theme manager · backup-restore UI · custom fields · keyboard shortcuts
+### 5. Larger functional gaps (new build needed)
+- [ ] **HR beyond staff accounts (spec §11):** scheduling, attendance/clock-in, training/CE,
+  performance reviews, incident reports (new models + UI — multi-step)
+- [ ] Financial extras: cash-flow forecast, AP aging, budget variance, PDF/QuickBooks export
+
+### 6. Smaller roadmapped items
+- [x] Dark mode / theming — **done this session**
+- [ ] i18n · backup-restore UI · custom fields · keyboard shortcuts
 - [ ] QR codes (Code39 built) · fine-grained "2h-after-due" overdue escalation (needs per-slot due times)
 
 ---
@@ -126,42 +143,18 @@ Typecheck: `npm run typecheck`.
 ---
 
 ## 👉 Suggested next step
-**Development focus (current):** filling client-UI gaps on the done backend.
-- ✅ **Point of Sale** page shipped (`client/src/pages/Sales.tsx`, route `/sales`) — catalog
-  search → cart, OTC/Rx per line, live province tax (Rx zero-rated), payment + printable
-  receipt, daily cash-reconciliation tab. Verified in-browser (Playwright).
-- ✅ **Messages** page shipped (`client/src/pages/Messages.tsx`, route `/messages`) — inbox
-  with Broadcast/Location scope badges, owner broadcast composer (all/one location), and an
-  auto-scoped intra-location composer. Verified in-browser (no cross-location leakage).
-- ✅ **Four more pages shipped in parallel** (built by 4 concurrent agents, wired + verified
-  in-browser, 0 console errors): **Prescribers** (`/prescribers`), **Narcotics** register
-  (`/narcotics`), **Recalls**/quarantine (`/recalls`), and **Notifications** queue
-  (`/notifications`). Every backend module now has a client surface.
-- ✅ **Inter-pharmacy stock transfers** shipped — the first genuinely new *feature* (backend
-  module + `StockTransfer` migration + `Transfers.tsx`). Request → owner approval → atomic
-  FEFO move between locations; controlled substances balance both narcotics registers. Added
-  `GET /pharmacies` directory endpoint. Verified end-to-end (API stock move + in-browser
-  request/approval flow).
-- ✅ **Staff / user management** shipped (`client/src/pages/Staff.tsx`, route `/staff`, nav
-  "Staff", `user:manage`) on a new `users` backend module (no migration — reuses the `User`
-  model). List/create/activate-deactivate staff with role + license; security guards verified:
-  non-owner can't create/modify an owner or escalate to owner, new staff are pinned to the
-  creator's location, no self-deactivation, duplicate-email → 400. In-app staff onboarding now
-  exists (previously accounts were seed-only).
-- ✅ **Dark mode + theming pass** — persisted light/dark toggle (no-FOUC init in `index.html`,
-  `data-theme` on `<html>`, `prefers-color-scheme` default), theme-token overrides, and
-  theme-aware inputs. Also fixed a real contrast bug: `.btn-ghost` was styled for the dark
-  sidebar but reused on light content panels (faint "Refresh"/"Clear") — base is now
-  content-readable, sidebar styling scoped to `.sidebar`. Verified in-browser (light+dark,
-  persists across reload).
-- Buildable UI backlog is now **clear** — every backend module has a client page, and
-  per-user notification preferences already live in the Settings page. What remains is
-  larger or blocked: (a) the rest of **HR (spec §11)** beyond staff accounts — scheduling,
-  attendance/clock-in, training/CE tracking, performance reviews, incident reports (needs new
-  backend models + UI, a multi-step effort); (b) financial extras (cash-flow forecast, AP
-  aging, PDF/QuickBooks export); or (c) wiring a **real external provider** (S3 / Twilio /
-  SendGrid / OCR / insurance / payments) behind the existing stubs — blocked on credentials.
 
-Testing infra already in place if needed: `npm test` (35 unit), `npm run test:integration`
-(35), `npm run loadtest` (200 users). Deferred go-live items (pen-test, managed Postgres,
-sign-offs) tracked above under "LEFT".
+The **buildable UI backlog is clear** — every backend module has a client page (see "Shipped
+this session"). Pick one of the remaining directions, in rough priority:
+
+1. **HR module (spec §11)** — the largest unbuilt functional area. Suggested first slice:
+   **scheduling + attendance** (new `Shift`/`Attendance` models + migration + pages), then
+   training/CE, reviews, incident reports.
+2. **Financial extras** — cash-flow forecast, AP aging, budget variance, PDF/QuickBooks export.
+3. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
+   insurance / payments) — *blocked on credentials*.
+4. **Go-live hardening** — penetration/security review (`/security-review`), managed Postgres,
+   CI/CD, backup/DR, secret rotation; then the compliance/privacy/pharmacist sign-off gates.
+
+Testing infra in place: `npm test` (35 unit) · `npm run test:integration` (35) ·
+`npm run loadtest` (200 users) · `npm run typecheck`.
