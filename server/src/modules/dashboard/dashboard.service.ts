@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
+import { lowStock } from '../inventory/inventory.service';
 
 /** Start/end of the current local day, for "today" aggregations. */
 function todayRange() {
@@ -78,7 +79,7 @@ export async function locationOverview(auth: AuthContext, requestedPharmacyId?: 
   assertLocationAccess(auth, pharmacyId);
 
   const { start, end } = todayRange();
-  const [pharmacy, salesAgg, rxToday] = await Promise.all([
+  const [pharmacy, salesAgg, rxToday, belowThreshold] = await Promise.all([
     prisma.pharmacy.findUnique({
       where: { id: pharmacyId },
       include: { _count: { select: { users: true, patients: true } } },
@@ -88,6 +89,7 @@ export async function locationOverview(auth: AuthContext, requestedPharmacyId?: 
       _sum: { totalCents: true },
     }),
     prisma.prescription.count({ where: { pharmacyId, createdAt: { gte: start, lt: end } } }),
+    lowStock(auth, pharmacyId), // items at/under their reorder threshold
   ]);
   if (!pharmacy) throw new Error('Pharmacy not found');
 
@@ -104,7 +106,7 @@ export async function locationOverview(auth: AuthContext, requestedPharmacyId?: 
     patientCount: pharmacy._count.patients,
     salesToday: (salesAgg._sum.totalCents ?? 0) / 100, // dollars
     prescriptionsToday: rxToday,
-    reorderAlerts: 0,
+    reorderAlerts: belowThreshold.length,
     refillsDueToday: 0,
     complianceChecklist: { total: 0, completed: 0 },
   };

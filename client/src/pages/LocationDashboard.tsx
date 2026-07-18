@@ -37,7 +37,7 @@ export function LocationDashboard() {
         <Stat label="Staff" value={data.staffCount.toString()} />
         <Stat label="Sales today" value={currency(data.salesToday)} />
         <Stat label="Prescriptions today" value={data.prescriptionsToday.toString()} />
-        <Stat label="Reorder alerts" value={data.reorderAlerts.toString()} sub="wiring pending" />
+        <Stat label="Reorder alerts" value={data.reorderAlerts.toString()} sub="at/under threshold" />
         <Stat label="Refills due today" value={data.refillsDueToday.toString()} sub="wiring pending" />
       </div>
 
