@@ -142,6 +142,12 @@ Typecheck: `npm run typecheck`.
   FEFO move between locations; controlled substances balance both narcotics registers. Added
   `GET /pharmacies` directory endpoint. Verified end-to-end (API stock move + in-browser
   request/approval flow).
+- ✅ **Staff / user management** shipped (`client/src/pages/Staff.tsx`, route `/staff`, nav
+  "Staff", `user:manage`) on a new `users` backend module (no migration — reuses the `User`
+  model). List/create/activate-deactivate staff with role + license; security guards verified:
+  non-owner can't create/modify an owner or escalate to owner, new staff are pinned to the
+  creator's location, no self-deactivation, duplicate-email → 400. In-app staff onboarding now
+  exists (previously accounts were seed-only).
 - ✅ **Dark mode + theming pass** — persisted light/dark toggle (no-FOUC init in `index.html`,
   `data-theme` on `<html>`, `prefers-color-scheme` default), theme-token overrides, and
   theme-aware inputs. Also fixed a real contrast bug: `.btn-ghost` was styled for the dark
@@ -150,11 +156,11 @@ Typecheck: `npm run typecheck`.
   persists across reload).
 - Buildable UI backlog is now **clear** — every backend module has a client page, and
   per-user notification preferences already live in the Settings page. What remains is
-  larger or blocked: (a) a **new HR / Staff-management module** (spec §11: employee profiles,
-  scheduling, attendance, training/CE, incident reports — needs new backend models + UI, a
-  multi-step effort); (b) financial extras (cash-flow forecast, AP aging, PDF/QuickBooks
-  export); or (c) wiring a **real external provider** (S3 / Twilio / SendGrid / OCR /
-  insurance / payments) behind the existing stubs — blocked on credentials.
+  larger or blocked: (a) the rest of **HR (spec §11)** beyond staff accounts — scheduling,
+  attendance/clock-in, training/CE tracking, performance reviews, incident reports (needs new
+  backend models + UI, a multi-step effort); (b) financial extras (cash-flow forecast, AP
+  aging, PDF/QuickBooks export); or (c) wiring a **real external provider** (S3 / Twilio /
+  SendGrid / OCR / insurance / payments) behind the existing stubs — blocked on credentials.
 
 Testing infra already in place if needed: `npm test` (35 unit), `npm run test:integration`
 (35), `npm run loadtest` (200 users). Deferred go-live items (pen-test, managed Postgres,

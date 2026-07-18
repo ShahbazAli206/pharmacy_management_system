@@ -13,6 +13,7 @@ import { Messages } from './pages/Messages';
 import { Prescribers } from './pages/Prescribers';
 import { Narcotics } from './pages/Narcotics';
 import { Transfers } from './pages/Transfers';
+import { Staff } from './pages/Staff';
 import { Recalls } from './pages/Recalls';
 import { Notifications } from './pages/Notifications';
 import { Compliance } from './pages/Compliance';
@@ -227,6 +228,16 @@ export default function App() {
           <ProtectedRoute permission="workflow:approve">
             <Layout>
               <Workflow />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute permission="user:manage">
+            <Layout>
+              <Staff />
             </Layout>
           </ProtectedRoute>
         }

@@ -145,6 +145,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Audit Log
             </NavLink>
           )}
+          {can('user:manage') && (
+            <NavLink to="/staff" className="nav-link">
+              Staff
+            </NavLink>
+          )}
           <NavLink to="/settings" className="nav-link">
             Settings
           </NavLink>
