@@ -291,6 +291,62 @@ export interface ReportResult {
   method?: string;
 }
 
+// ---- Sales / POS ----
+export interface ProductRow {
+  id: string;
+  din: string;
+  name: string;
+  genericName: string | null;
+  strength: string;
+  form: string;
+  schedule: string;
+  isControlled: boolean;
+  defaultPriceCents: number;
+}
+
+export type SaleItemType = 'OTC' | 'RX' | 'COMPOUND' | 'SERVICE';
+export type PaymentMethod = 'CASH' | 'DEBIT' | 'CREDIT' | 'INSURANCE';
+
+export interface SaleResponse {
+  id: string;
+  province: string;
+  subtotalCents: number;
+  taxCents: number;
+  totalCents: number;
+  paymentMethod: PaymentMethod;
+  createdAt: string;
+  lines: Array<{
+    id: string;
+    itemType: SaleItemType;
+    description: string;
+    quantity: number;
+    unitPriceCents: number;
+    lineTotalCents: number;
+    taxable: boolean;
+  }>;
+}
+
+export interface DailySummary {
+  date: string;
+  transactionCount: number;
+  subtotalCents: number;
+  taxCents: number;
+  totalCents: number;
+  byPaymentMethod: Record<string, number>;
+}
+
+// ---- Messaging ----
+export interface MessageRow {
+  id: string;
+  senderUserId: string;
+  senderName: string;
+  scope: 'LOCATION' | 'BROADCAST';
+  pharmacyId: string | null;
+  subject: string | null;
+  body: string;
+  createdAt: string;
+}
+
 // ---- Phase 11: Workflow, role simulator, timeline ----
 export interface WorkflowRow {
   id: string;

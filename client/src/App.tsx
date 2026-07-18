@@ -8,6 +8,8 @@ import { LocationDashboard } from './pages/LocationDashboard';
 import { Patients } from './pages/Patients';
 import { Inventory } from './pages/Inventory';
 import { Prescriptions } from './pages/Prescriptions';
+import { Sales } from './pages/Sales';
+import { Messages } from './pages/Messages';
 import { Compliance } from './pages/Compliance';
 import { AuditLog } from './pages/AuditLog';
 import { Finance } from './pages/Finance';
@@ -75,6 +77,16 @@ export default function App() {
         }
       />
       <Route
+        path="/sales"
+        element={
+          <ProtectedRoute permission="pos:sell">
+            <Layout>
+              <Sales />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/inventory"
         element={
           <ProtectedRoute permission="inventory:read">
@@ -120,6 +132,16 @@ export default function App() {
           <ProtectedRoute permission="camera:view">
             <Layout>
               <Cameras />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messages"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Messages />
             </Layout>
           </ProtectedRoute>
         }

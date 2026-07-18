@@ -52,6 +52,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Prescriptions
             </NavLink>
           )}
+          {can('pos:sell') && (
+            <NavLink to="/sales" className="nav-link">
+              Point of Sale
+            </NavLink>
+          )}
           {can('inventory:read') && (
             <NavLink to="/inventory" className="nav-link">
               Inventory
@@ -80,6 +85,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {can('camera:view') && (
             <NavLink to="/cameras" className="nav-link">
               Cameras
+            </NavLink>
+          )}
+          {(can('message:send') || can('message:broadcast')) && (
+            <NavLink to="/messages" className="nav-link">
+              Messages
             </NavLink>
           )}
           {can('workflow:approve') && (

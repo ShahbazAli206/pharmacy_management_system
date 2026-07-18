@@ -356,6 +356,7 @@ a {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .badge-ok {
@@ -515,4 +516,93 @@ code {
 
 .toggle-row:last-child {
   border-bottom: none;
+}
+
+/* ---- Point of Sale ---- */
+.pos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .pos-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pos-totals {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pos-total {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+/* Compact inputs inside data tables (POS cart) */
+.table input,
+.table select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface);
+}
+
+/* ---- Messaging ---- */
+.msg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+}
+
+.msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.msg-sender {
+  font-weight: 600;
+}
+
+.msg-time {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.msg-subject {
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.msg-body {
+  margin-top: 4px;
+  color: var(--text, #1f2937);
+  white-space: pre-wrap;
+  line-height: 1.5;
 }

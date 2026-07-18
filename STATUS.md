@@ -26,10 +26,10 @@ https://github.com/ShahbazAli206/pharmacy_management_system (branch `main`).
 | Phase | Scope | Status |
 |---|---|---|
 | **1 Foundation** | Auth, DB-backed RBAC, **RLS (active at runtime)**, MFA/TOTP, password reset, patient CRUD + allergy/condition sub-resources, 35 unit tests, OpenAPI/Swagger | ✅ Complete · client ✅ |
-| **2 Core Pharmacy** | Catalog, inventory (lots/FEFO/expiry/low-stock/auto-PO), Rx workflow + interaction engine (409 block), dispense/refills, POS (HST, Rx zero-rated), cash reconciliation | ✅ Smoke 36/36 · client ✅ |
+| **2 Core Pharmacy** | Catalog, inventory (lots/FEFO/expiry/low-stock/auto-PO), Rx workflow + interaction engine (409 block), dispense/refills, POS (HST, Rx zero-rated), cash reconciliation | ✅ Smoke 36/36 · client ✅ · **POS page (new)** |
 | **3 Compliance & Narcotics** | Checklists (idempotent, signature-required), narcotics register + **discrepancy lock (423)** + resolve, recall ingest→quarantine, license/permit expiry, compliance score, audit viewer | ✅ Smoke 25/25 · client ✅ |
 | **4 Financials** | Expense workflow (**no self-approval**), P&L per-location + consolidated, profit distribution (basis points), CRA HST/GST summary, renewals, CSV export | ✅ Smoke 23/23 · client ✅ |
-| **5 Camera & Comms** | Camera registry + heartbeat + role-scoped grid, messaging + owner broadcast (**no cross-location leakage**), CASL refill reminders + dispatch (stub provider) | ✅ Smoke 23/23 · client ✅ |
+| **5 Camera & Comms** | Camera registry + heartbeat + role-scoped grid, messaging + owner broadcast (**no cross-location leakage**), CASL refill reminders + dispatch (stub provider) | ✅ Smoke 23/23 · client ✅ · **Messages page (new)** |
 | **7 Platform** | Feature flags (global + per-pharmacy override), global search, system health | ✅ Smoke · client ✅ (Admin) |
 | **8 Docs/e-sign/import** | Document manager (pluggable storage), e-signature, CSV bulk import (per-row errors) | ✅ Smoke · **client ✅ (new)** |
 | **9 Config/ops** | System settings (≥10y retention enforced), maintenance mode, notification prefs | ✅ Smoke · **client ✅ (new)** |
@@ -126,10 +126,19 @@ Typecheck: `npm run typecheck`.
 ---
 
 ## 👉 Suggested next step
-HTTP-level **integration tests** (`server/tests/integration/`, 35) and a **200-user load
-test** (`server/loadtest/`, `npm run loadtest`) are both in place. Remaining Phase-6 items:
-(a) **penetration / security review** (`/security-review` on the diff, plus dependency audit
-+ secret rotation), and/or (b) extend integration coverage to the Rx-interaction 409 block
-and narcotics discrepancy 423 lock. Then the go-live process work: managed Postgres, CI/CD,
-and the compliance/privacy/pharmacist sign-off gates. Alternatively, wire one real external
-provider (S3 / Twilio / SendGrid) behind the existing pluggable interfaces.
+**Development focus (current):** filling client-UI gaps on the done backend.
+- ✅ **Point of Sale** page shipped (`client/src/pages/Sales.tsx`, route `/sales`) — catalog
+  search → cart, OTC/Rx per line, live province tax (Rx zero-rated), payment + printable
+  receipt, daily cash-reconciliation tab. Verified in-browser (Playwright).
+- ✅ **Messages** page shipped (`client/src/pages/Messages.tsx`, route `/messages`) — inbox
+  with Broadcast/Location scope badges, owner broadcast composer (all/one location), and an
+  auto-scoped intra-location composer. Verified in-browser: pharmacist inbox correctly shows
+  their location message + the owner broadcast, no cross-location leakage.
+- Next UI gaps (backend already done, no page yet): **Notification preferences**
+  (`/api/notifications`, naturally in Settings), a dedicated **Narcotics register** view, and
+  **Recalls/quarantine**. Or build the first unbuilt feature: **inter-pharmacy stock
+  transfers** (needs a new backend module + UI).
+
+Testing infra already in place if needed: `npm test` (35 unit), `npm run test:integration`
+(35), `npm run loadtest` (200 users). Deferred go-live items (pen-test, managed Postgres,
+sign-offs) tracked above under "LEFT".

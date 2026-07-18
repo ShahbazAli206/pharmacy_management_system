@@ -79,7 +79,7 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Interaction alerts block Rx save until pharmacist acknowledges (409 flow).
 - [x] Inventory: FEFO stock decrement, receiving, expiry alerts (30/60/90 buckets), low-stock detection, auto-generated draft POs.
 - [x] POS/sales: OTC + Rx lines, province HST/GST (Rx zero-rated), stock decrement, daily cash-reconciliation summary.
-- [x] Client pages: Inventory (stock + expiry) and Prescriptions (list + dispense).
+- [x] Client pages: Inventory (stock + expiry), Prescriptions (list + dispense), and **Point of Sale** (catalog search → cart, per-line OTC/Rx type + editable qty/price, live province tax with Rx zero-rated, payment method, authoritative receipt + print, and a daily cash-reconciliation tab with expected-vs-counted variance).
 - [~] OCR pipeline: pluggable provider interface + working stub; real engine (Vision/Textract) needs cloud creds.
 - [ ] Inter-pharmacy stock transfers (owner-approved).
 - [ ] Digital/printed receipts; provincial + private insurance adjudication.
@@ -111,7 +111,7 @@ Legend: [x] done · [~] partial · [ ] not started
 ## PHASE 5 — Camera & Comms (Months 11–12)  ← COMPLETE (smoke-tested 23/23 vs live DB; client built)
 - [x] Camera registration + management (placement, IP, brand); health-check heartbeat + status; footage-view audit logging.
 - [x] Camera page with status grid (role-scoped: owner all, partner own).
-- [x] Internal messaging (intra-location) + owner broadcast (no cross-location leakage for partners).
+- [x] Internal messaging (intra-location) + owner broadcast (no cross-location leakage for partners). **Client: Messages page** — inbox with scope badges (Broadcast/Location), owner broadcast composer (all locations or one), and an auto-scoped intra-location composer for staff.
 - [x] Refill reminders (CASL opt-in) generated + dispatched via pluggable provider (Twilio/SendGrid stub).
 - [ ] Real WebRTC/HLS live streaming + 16-grid thumbnails; motion-event push; automated scheduled report delivery.
 
