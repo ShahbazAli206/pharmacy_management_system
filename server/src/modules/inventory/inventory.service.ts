@@ -3,6 +3,7 @@ import { prisma, type Db } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { badRequest, forbidden, notFound } from '../../utils/httpError';
+import { postNarcoticTxn } from '../narcotics/narcotics.service';
 
 type Tx = Prisma.TransactionClient | Db;
 
@@ -93,6 +94,21 @@ export async function receiveStock(auth: AuthContext, input: ReceiveStockInput) 
         unitCostCents: input.unitCostCents ?? 0,
       },
     });
+
+    // Controlled substances: mirror the receipt into the narcotics register so
+    // its running balance stays in step with physical stock (CDSA). Without this
+    // a later dispense would be blocked by the register's non-negative rule.
+    if (product.isControlled) {
+      await postNarcoticTxn(tx, {
+        pharmacyId,
+        productId: input.productId,
+        type: 'RECEIPT',
+        quantityChange: input.quantity,
+        performedByUserId: auth.userId,
+        referenceType: 'StockLot',
+        referenceId: lot.id,
+      });
+    }
 
     return { inventoryItemId: item.id, lot };
   });
