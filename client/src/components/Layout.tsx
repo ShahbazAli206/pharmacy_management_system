@@ -1,5 +1,11 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+
+/** Read the current theme set on <html> (initialised by the inline script in index.html). */
+function getTheme(): 'light' | 'dark' {
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
 
 const ROLE_LABELS: Record<string, string> = {
   SYSTEM_OWNER: 'System Owner',
@@ -14,10 +20,22 @@ const ROLE_LABELS: Record<string, string> = {
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
+  const [theme, setTheme] = useState<'light' | 'dark'>(getTheme);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem('pms_theme', next);
+    } catch {
+      /* ignore storage errors (private mode) */
+    }
+    setTheme(next);
   };
 
   return (
@@ -143,6 +161,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="user-role">{user ? ROLE_LABELS[user.role] : ''}</div>
           {user?.pharmacy && <div className="user-loc">{user.pharmacy.name}</div>}
+          <button className="btn btn-ghost" onClick={toggleTheme}>
+            {theme === 'dark' ? '☀ Light mode' : '☾ Dark mode'}
+          </button>
           <button className="btn btn-ghost" onClick={handleLogout}>
             Sign out
           </button>

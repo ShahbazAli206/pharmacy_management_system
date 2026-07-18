@@ -13,6 +13,22 @@
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   color: var(--text);
+  color-scheme: light;
+}
+
+/* Dark theme — set via data-theme on <html> (see index.html + Layout toggle).
+   Only the surface/text/border tokens flip; brand + status colours are shared. */
+:root[data-theme='dark'] {
+  --bg: #0b1120;
+  --surface: #1e293b;
+  --surface-2: #0f172a;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --primary: #14b8a6;
+  --primary-dark: #0d9488;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
 }
 
 * {
@@ -184,6 +200,13 @@ a {
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.field input:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
 }
 
 .field input:focus,
@@ -222,16 +245,29 @@ a {
   background: var(--primary-dark);
 }
 
+/* Content ghost buttons (Refresh/Clear/change/…) — readable on light panels. */
 .btn-ghost {
   background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Sidebar ghost buttons (Sign out, theme toggle) live on the dark rail. */
+.sidebar .btn-ghost {
   color: #cbd5e1;
   border-color: rgba(255, 255, 255, 0.2);
   margin-top: 10px;
   width: 100%;
 }
 
-.btn-ghost:hover:not(:disabled) {
+.sidebar .btn-ghost:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
 /* ---------- Page ---------- */

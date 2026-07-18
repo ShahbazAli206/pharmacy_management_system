@@ -142,7 +142,13 @@ Typecheck: `npm run typecheck`.
   FEFO move between locations; controlled substances balance both narcotics registers. Added
   `GET /pharmacies` directory endpoint. Verified end-to-end (API stock move + in-browser
   request/approval flow).
-- Remaining (optional): notification *preferences* UI in `/settings`, general UX polish,
+- ✅ **Dark mode + theming pass** — persisted light/dark toggle (no-FOUC init in `index.html`,
+  `data-theme` on `<html>`, `prefers-color-scheme` default), theme-token overrides, and
+  theme-aware inputs. Also fixed a real contrast bug: `.btn-ghost` was styled for the dark
+  sidebar but reused on light content panels (faint "Refresh"/"Clear") — base is now
+  content-readable, sidebar styling scoped to `.sidebar`. Verified in-browser (light+dark,
+  persists across reload).
+- Remaining (optional): notification *preferences* UI in `/settings`, more UX polish,
   or wiring a real external provider (S3/Twilio/SendGrid) behind the existing stubs.
 
 Testing infra already in place if needed: `npm test` (35 unit), `npm run test:integration`
