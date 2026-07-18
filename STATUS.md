@@ -148,8 +148,13 @@ Typecheck: `npm run typecheck`.
   sidebar but reused on light content panels (faint "Refresh"/"Clear") — base is now
   content-readable, sidebar styling scoped to `.sidebar`. Verified in-browser (light+dark,
   persists across reload).
-- Remaining (optional): notification *preferences* UI in `/settings`, more UX polish,
-  or wiring a real external provider (S3/Twilio/SendGrid) behind the existing stubs.
+- Buildable UI backlog is now **clear** — every backend module has a client page, and
+  per-user notification preferences already live in the Settings page. What remains is
+  larger or blocked: (a) a **new HR / Staff-management module** (spec §11: employee profiles,
+  scheduling, attendance, training/CE, incident reports — needs new backend models + UI, a
+  multi-step effort); (b) financial extras (cash-flow forecast, AP aging, PDF/QuickBooks
+  export); or (c) wiring a **real external provider** (S3 / Twilio / SendGrid / OCR /
+  insurance / payments) behind the existing stubs — blocked on credentials.
 
 Testing infra already in place if needed: `npm test` (35 unit), `npm run test:integration`
 (35), `npm run loadtest` (200 users). Deferred go-live items (pen-test, managed Postgres,
