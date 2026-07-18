@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import type { LocationOverview } from '../lib/types';
 
+const currency = (n: number) =>
+  new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(n);
+
 export function LocationDashboard() {
   const [data, setData] = useState<LocationOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +35,10 @@ export function LocationDashboard() {
       <div className="stat-grid">
         <Stat label="Patients" value={data.patientCount.toLocaleString()} />
         <Stat label="Staff" value={data.staffCount.toString()} />
-        <Stat label="Sales today" value={`$${data.salesToday}`} sub="wiring in Phase 2" />
-        <Stat label="Prescriptions today" value={data.prescriptionsToday.toString()} sub="wiring in Phase 2" />
-        <Stat label="Reorder alerts" value={data.reorderAlerts.toString()} sub="wiring in Phase 2" />
-        <Stat label="Refills due today" value={data.refillsDueToday.toString()} sub="wiring in Phase 2" />
+        <Stat label="Sales today" value={currency(data.salesToday)} />
+        <Stat label="Prescriptions today" value={data.prescriptionsToday.toString()} />
+        <Stat label="Reorder alerts" value={data.reorderAlerts.toString()} sub="wiring pending" />
+        <Stat label="Refills due today" value={data.refillsDueToday.toString()} sub="wiring pending" />
       </div>
 
       <section className="panel">

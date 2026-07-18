@@ -29,8 +29,8 @@ export function OwnerDashboard() {
         <Stat label="Locations" value={`${data.totals.activeLocations}/${data.totals.locations}`} sub="active" />
         <Stat label="Staff" value={data.totals.staff.toString()} />
         <Stat label="Patients" value={data.totals.patients.toLocaleString()} />
-        <Stat label="Revenue today" value={currency(data.totals.revenueToday)} sub="wiring in Phase 2" />
-        <Stat label="Prescriptions today" value={data.totals.prescriptionsToday.toString()} sub="wiring in Phase 2" />
+        <Stat label="Revenue today" value={currency(data.totals.revenueToday)} sub="across all locations" />
+        <Stat label="Prescriptions today" value={data.totals.prescriptionsToday.toString()} />
         <Stat label="Pending reports" value={data.pendingPartnerReports.toString()} />
       </div>
 
