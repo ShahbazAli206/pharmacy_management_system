@@ -14,6 +14,7 @@ import { Prescribers } from './pages/Prescribers';
 import { Narcotics } from './pages/Narcotics';
 import { Transfers } from './pages/Transfers';
 import { Staff } from './pages/Staff';
+import { Attendance } from './pages/Attendance';
 import { Recalls } from './pages/Recalls';
 import { Notifications } from './pages/Notifications';
 import { Compliance } from './pages/Compliance';
@@ -228,6 +229,16 @@ export default function App() {
           <ProtectedRoute permission="workflow:approve">
             <Layout>
               <Workflow />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/attendance"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Attendance />
             </Layout>
           </ProtectedRoute>
         }

@@ -95,9 +95,11 @@ for location-scoped writes (`76bbea3`).
 - [ ] Pharmacist UAT sign-off
 
 ### 5. Larger functional gaps (new build needed)
-- [ ] **HR beyond staff accounts (spec §11):** scheduling, attendance/clock-in, training/CE,
-  performance reviews, incident reports (new models + UI — multi-step)
-- [ ] Financial extras: cash-flow forecast, AP aging, budget variance, PDF/QuickBooks export
+- [x] **HR — attendance/clock-in DONE** (`Attendance` model + migration, `/attendance` clock-in/
+  out/me + team log, Attendance page). Still left: scheduling, training/CE, performance
+  reviews, incident reports.
+- [x] **Financial — AP aging DONE** (`/finance/ap-aging` + Finance panel). Still left:
+  cash-flow forecast, budget variance, PDF/QuickBooks export.
 
 ### 6. Smaller roadmapped items
 - [x] Dark mode / theming — **done this session**

@@ -150,6 +150,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Staff
             </NavLink>
           )}
+          <NavLink to="/attendance" className="nav-link">
+            Attendance
+          </NavLink>
           <NavLink to="/settings" className="nav-link">
             Settings
           </NavLink>

@@ -119,6 +119,7 @@ model Pharmacy {
   workflowRequests   WorkflowRequest[]
   transfersOut       StockTransfer[]   @relation("TransfersOut")
   transfersIn        StockTransfer[]   @relation("TransfersIn")
+  attendance         Attendance[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -154,6 +155,7 @@ model User {
   narcoticCounts       NarcoticCount[]    @relation("NarcoticCountedBy")
   transfersRequested   StockTransfer[]    @relation("TransfersRequested")
   transfersApproved    StockTransfer[]    @relation("TransfersApproved")
+  attendance           Attendance[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -1084,4 +1086,21 @@ model StockTransfer {
   @@index([fromPharmacyId])
   @@index([toPharmacyId])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// HR — staff attendance (clock-in / clock-out). One open record per user.
+// ---------------------------------------------------------------------------
+model Attendance {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  pharmacyId String
+  pharmacy   Pharmacy  @relation(fields: [pharmacyId], references: [id])
+  clockInAt  DateTime  @default(now())
+  clockOutAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([pharmacyId, clockInAt])
 }
