@@ -1,6 +1,7 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-20 (fixed a real bug found via manual testing: Inventory page had no owner location picker)
+**Last updated:** 2026-07-20 (fixed more owner-scope bugs — Compliance, My Location — plus a layout
+scroll bug; demo data + visual redesign requested, scoping in progress)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +49,29 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-20, part 24) — more owner-scope bugs + a layout scroll bug
+- User reported (via screenshots) three pages looking broken/empty: **My Location** ("No
+  pharmacy in scope"), **Prescriptions** (0 records), and **Compliance** ("pharmacyId is
+  required"). Diagnosis: Prescriptions was correctly showing real data — the database
+  genuinely has almost no demo data (3 patients, 0 prescriptions total), not a bug. But
+  **Compliance and My Location had the same owner-location-picker gap just fixed on Inventory**
+  (part 23) — neither page let the System Owner pick a location, so both failed outright.
+  Fixed both the same way: `fetchLocations()` populates a dropdown for the owner, both pages
+  pass `?pharmacyId=` once selected (`/compliance/*` endpoints and `/dashboard/location`
+  already supported this server-side — confirmed via `dashboard.service.ts`'s
+  "owner may pass ?pharmacyId to inspect one" comment).
+- **Layout scroll bug also found and fixed**: `.app-shell` used `min-height: 100vh` with no
+  independent scroll containers, so the whole document scrolled as one unit — the sidebar
+  moved with the page instead of staying fixed with its own scrollbar. Changed to `height:
+  100vh` on the shell and `overflow-y: auto` on both `.sidebar` and `.content`
+  independently. Verified via Playwright: `document.body.scrollHeight` no longer exceeds
+  the viewport, and both panes have independent `overflow-y: auto`.
+  73/73 tests still pass; typecheck clean.
+- **Still open, larger scope**: the user also asked for realistic cross-linked demo data
+  across every module and a full visual redesign (icons, imagery, colorful theme) — these are
+  substantial, direction-dependent asks being scoped separately (see conversation for the
+  chosen approach once decided), not yet started as of this entry.
 
 ### Shipped this session (2026-07-20, part 23) — bug fix: Inventory owner location picker
 - Found via manual testing (user reported a DB-connection error on the Inventory page; the DB
