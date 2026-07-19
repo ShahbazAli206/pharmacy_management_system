@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { ChecklistItem, ComplianceAlert, ComplianceScore, LicenseWarnings } from '../lib/types';
 
 export function Compliance() {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [alerts, setAlerts] = useState<ComplianceAlert[]>([]);
   const [score, setScore] = useState<ComplianceScore | null>(null);
@@ -45,7 +47,7 @@ export function Compliance() {
 
   const complete = async (item: ChecklistItem) => {
     const signature = item.template.requiresSignature
-      ? window.prompt('Signature required — enter your name/initials:') ?? ''
+      ? window.prompt(t('signaturePromptText')) ?? ''
       : undefined;
     if (item.template.requiresSignature && !signature) return;
     await api(`/compliance/checklist/${item.id}/complete`, {
@@ -69,12 +71,12 @@ export function Compliance() {
     <div>
       <header className="page-head row">
         <div>
-          <h1>Compliance</h1>
-          <p className="muted">Daily checklist, alerts, and license tracking</p>
+          <h1>{t('navCompliance')}</h1>
+          <p className="muted">{t('complianceSubtitle')}</p>
         </div>
         {can('compliance:write') && (
           <button className="btn" onClick={generate} disabled={busy}>
-            {busy ? 'Generating…' : "Generate today's checklist"}
+            {busy ? t('generatingEllipsis') : t('generateChecklistButton')}
           </button>
         )}
       </header>
@@ -82,28 +84,28 @@ export function Compliance() {
       <div className="stat-grid">
         {score && (
           <div className="stat-card">
-            <div className="stat-label">Compliance score (month)</div>
+            <div className="stat-label">{t('complianceScoreLabel')}</div>
             <div className="stat-value" style={{ color: bandColor[score.band] }}>
               {score.score}
             </div>
             <div className="stat-sub" style={{ color: bandColor[score.band] }}>
-              {score.band} · {score.completed}/{score.total} tasks
+              {score.band} · {t('tasksCount', { completed: score.completed, total: score.total })}
             </div>
           </div>
         )}
         <div className="stat-card">
-          <div className="stat-label">Open alerts</div>
+          <div className="stat-label">{t('openAlertsLabel')}</div>
           <div className="stat-value">{alerts.length}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">License/permit warnings</div>
+          <div className="stat-label">{t('licensePermitWarningsLabel')}</div>
           <div className="stat-value">{licenseRows.length}</div>
         </div>
       </div>
 
       {alerts.length > 0 && (
         <section className="panel">
-          <h2>Alerts</h2>
+          <h2>{t('alertsHeading')}</h2>
           {alerts.map((a) => (
             <div
               key={a.id}
@@ -121,7 +123,7 @@ export function Compliance() {
               </span>
               {can('compliance:write') && (
                 <button className="btn" onClick={() => resolve(a.id)}>
-                  Resolve
+                  {t('resolveButton')}
                 </button>
               )}
             </div>
@@ -130,14 +132,14 @@ export function Compliance() {
       )}
 
       <section className="panel">
-        <h2>Today's checklist</h2>
+        <h2>{t('todaysChecklistHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Task</th>
-                <th>Status</th>
-                <th>Completed by</th>
+                <th>{t('colTask')}</th>
+                <th>{t('colStatus')}</th>
+                <th>{t('colCompletedBy')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -145,7 +147,7 @@ export function Compliance() {
               {checklist.length === 0 && (
                 <tr>
                   <td colSpan={4} className="muted">
-                    No checklist for today yet — generate it above.
+                    {t('noChecklistYet')}
                   </td>
                 </tr>
               )}
@@ -155,7 +157,7 @@ export function Compliance() {
                     {item.label}
                     {item.template.requiresSignature && (
                       <span className="badge badge-muted" style={{ marginLeft: 6 }}>
-                        signature
+                        {t('signatureBadge')}
                       </span>
                     )}
                   </td>
@@ -175,7 +177,7 @@ export function Compliance() {
                   <td>
                     {item.status !== 'COMPLETED' && can('compliance:write') && (
                       <button className="btn btn-primary" onClick={() => complete(item)}>
-                        Complete
+                        {t('completeButton')}
                       </button>
                     )}
                   </td>
@@ -188,15 +190,15 @@ export function Compliance() {
 
       {licenseRows.length > 0 && (
         <section className="panel">
-          <h2>License & permit expiry</h2>
+          <h2>{t('licensePermitExpiryHeading')}</h2>
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Type</th>
-                  <th>Name</th>
-                  <th>Expiry</th>
-                  <th className="num">Days left</th>
+                  <th>{t('colType')}</th>
+                  <th>{t('colName')}</th>
+                  <th>{t('colExpiry')}</th>
+                  <th className="num">{t('colDaysLeft')}</th>
                 </tr>
               </thead>
               <tbody>

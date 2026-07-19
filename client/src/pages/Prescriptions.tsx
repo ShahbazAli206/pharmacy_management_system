@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { PrescriptionRow } from '../lib/types';
 
 export function Prescriptions() {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [rows, setRows] = useState<PrescriptionRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -31,25 +33,25 @@ export function Prescriptions() {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      setNotice(`Dispensed. ${res.refillsRemaining} fill(s) remaining.`);
+      setNotice(t('dispensedNotice', { count: res.refillsRemaining }));
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Dispense failed');
+      setError(e instanceof ApiError ? e.message : t('dispenseFailedFallback'));
     } finally {
       setBusyId(null);
     }
   };
 
   if (error && !rows) return <div className="alert alert-error">{error}</div>;
-  if (!rows) return <div className="muted">Loading prescriptions…</div>;
+  if (!rows) return <div className="muted">{t('loadingPrescriptions')}</div>;
 
   const fillsRemaining = (r: PrescriptionRow) => 1 + r.refillsAuthorized - r.refillsUsed;
 
   return (
     <div>
       <header className="page-head">
-        <h1>Prescriptions</h1>
-        <p className="muted">{rows.length} record(s)</p>
+        <h1>{t('navPrescriptions')}</h1>
+        <p className="muted">{t('recordsCount', { count: rows.length })}</p>
       </header>
 
       {notice && <div className="alert" style={{ background: '#dcfce7', color: '#166534' }}>{notice}</div>}
@@ -60,11 +62,11 @@ export function Prescriptions() {
           <table className="table">
             <thead>
               <tr>
-                <th>Patient</th>
-                <th>Drug</th>
-                <th>Prescriber</th>
-                <th className="num">Fills left</th>
-                <th>Status</th>
+                <th>{t('colPatient')}</th>
+                <th>{t('colDrug')}</th>
+                <th>{t('colPrescriberSingular')}</th>
+                <th className="num">{t('colFillsLeft')}</th>
+                <th>{t('colStatus')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -72,7 +74,7 @@ export function Prescriptions() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="muted">
-                    No prescriptions yet.
+                    {t('noPrescriptionsYet')}
                   </td>
                 </tr>
               )}
@@ -85,7 +87,7 @@ export function Prescriptions() {
                     {r.drugName} {r.strength}
                     {r.isControlled && (
                       <span className="badge" style={{ background: '#fee2e2', color: '#991b1b', marginLeft: 6 }}>
-                        Controlled
+                        {t('controlledBadge')}
                       </span>
                     )}
                   </td>
@@ -105,7 +107,7 @@ export function Prescriptions() {
                         disabled={busyId === r.id}
                         onClick={() => dispense(r.id)}
                       >
-                        {busyId === r.id ? 'Dispensing…' : 'Dispense'}
+                        {busyId === r.id ? t('dispensingEllipsis') : t('dispenseButton')}
                       </button>
                     )}
                   </td>

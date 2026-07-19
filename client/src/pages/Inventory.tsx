@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { ExpiryAlert, InventoryRow } from '../lib/types';
 
-const bucketLabel: Record<ExpiryAlert['bucket'], string> = {
-  EXPIRED: 'Expired',
-  '30': '≤30 days',
-  '60': '≤60 days',
-  '90': '≤90 days',
-};
-
 export function Inventory() {
+  const { t } = useI18n();
   const [rows, setRows] = useState<InventoryRow[] | null>(null);
   const [expiry, setExpiry] = useState<ExpiryAlert[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const bucketLabel: Record<ExpiryAlert['bucket'], string> = {
+    EXPIRED: t('bucketExpired'),
+    '30': t('bucket30'),
+    '60': t('bucket60'),
+    '90': t('bucket90'),
+  };
 
   useEffect(() => {
     Promise.all([api<InventoryRow[]>('/inventory'), api<ExpiryAlert[]>('/inventory/alerts/expiry')])
@@ -24,31 +26,32 @@ export function Inventory() {
   }, []);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!rows) return <div className="muted">Loading inventory…</div>;
+  if (!rows) return <div className="muted">{t('loadingInventory')}</div>;
 
   const lowCount = rows.filter((r) => r.belowThreshold && r.reorderThreshold > 0).length;
 
   return (
     <div>
       <header className="page-head">
-        <h1>Inventory</h1>
+        <h1>{t('navInventory')}</h1>
         <p className="muted">
-          {rows.length} product(s) · {lowCount} below reorder threshold · {expiry.length} expiry alert(s)
+          {t('productsCount', { count: rows.length })} · {t('belowReorderCount', { count: lowCount })} ·{' '}
+          {t('expiryAlertsCount', { count: expiry.length })}
         </p>
       </header>
 
       {expiry.length > 0 && (
         <section className="panel">
-          <h2>Expiry alerts</h2>
+          <h2>{t('expiryAlertsHeading')}</h2>
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Product</th>
-                  <th>Lot</th>
-                  <th>Expiry</th>
-                  <th>Window</th>
-                  <th className="num">Qty</th>
+                  <th>{t('colProduct')}</th>
+                  <th>{t('colLot')}</th>
+                  <th>{t('colExpiry')}</th>
+                  <th>{t('colWindow')}</th>
+                  <th className="num">{t('colQty')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -72,24 +75,24 @@ export function Inventory() {
       )}
 
       <section className="panel">
-        <h2>Stock on hand</h2>
+        <h2>{t('stockOnHandHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>DIN</th>
-                <th>Product</th>
-                <th>Strength</th>
-                <th className="num">On hand</th>
-                <th className="num">Reorder at</th>
-                <th>Status</th>
+                <th>{t('colDin')}</th>
+                <th>{t('colProduct')}</th>
+                <th>{t('colStrength')}</th>
+                <th className="num">{t('colOnHand')}</th>
+                <th className="num">{t('colReorderAt')}</th>
+                <th>{t('colStatus')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="muted">
-                    No inventory yet. Receive stock via the API to populate this list.
+                    {t('noInventoryYet')}
                   </td>
                 </tr>
               )}
@@ -103,7 +106,7 @@ export function Inventory() {
                   <td>
                     {r.belowThreshold && r.reorderThreshold > 0 ? (
                       <span className="badge" style={{ background: '#fef3c7', color: '#92400e' }}>
-                        Reorder
+                        {t('reorderBadge')}
                       </span>
                     ) : (
                       <span className="badge badge-ok">OK</span>

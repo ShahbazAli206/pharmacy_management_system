@@ -289,13 +289,19 @@ Legend: [x] done · [~] partial · [ ] not started
   disconnected word-by-word keys, which reads badly once French word order differs from
   English. Verified in-browser via Playwright across all four pages, including the
   interpolated strings rendering correctly ("2/14 tâches terminées"). 73/73 tests still pass.
+- [x] **i18n coverage, round 3**: Inventory, Prescriptions, and Compliance also fully
+  translated. Compliance included the native `window.prompt()` text for signature capture,
+  easy to miss since it's not JSX. Verified in-browser (triple interpolation in Inventory's
+  subtitle line rendered correctly: "3 produit(s) · 0 sous le seuil de réapprovisionnement ·
+  0 alerte(s) d’expiration"). 73/73 tests still pass.
 
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
 - Bull/Redis job queue; WebRTC/HLS streaming; theme manager; i18n coverage for the
-  remaining ~20 pages beyond the eight now translated (chrome, Login, Settings, Owner
-  Dashboard, Location Dashboard, Patients, Products).
+  remaining pages beyond the persistent chrome + Login + Settings + Owner Dashboard +
+  Location Dashboard + Patients + Products + Inventory + Prescriptions + Compliance already
+  translated (~17 pages left, same `t('key')` pattern to extend).
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv
