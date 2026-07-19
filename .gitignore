@@ -44,5 +44,8 @@ Thumbs.db
 # ---- Local dev database (portable PostgreSQL binaries + data) ----
 .localdb/
 
+# ---- On-demand DB backups (admin console) ----
+server/backups/
+
 # ---- Misc ----
 *.local

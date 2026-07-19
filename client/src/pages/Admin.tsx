@@ -134,6 +134,7 @@ export function Admin() {
       {can('role:simulate') && <RoleSimulator />}
       <ActivityTimeline />
       <BarcodeTool />
+      <BackupsPanel />
     </div>
   );
 }
@@ -312,6 +313,116 @@ function BarcodeTool() {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
       {svg && <div dangerouslySetInnerHTML={{ __html: svg }} />}
+    </section>
+  );
+}
+
+interface BackupInfo {
+  filename: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+const fmtBytes = (n: number) => (n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+
+function BackupsPanel() {
+  const [backups, setBackups] = useState<BackupInfo[] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setBackups(await api<BackupInfo[]>('/admin/backups'));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const create = async () => {
+    setCreating(true);
+    setError(null);
+    try {
+      await api('/admin/backups', { method: 'POST', body: JSON.stringify({}) });
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const download = (filename: string) => {
+    fetch(`${API_URL}/admin/backups/${encodeURIComponent(filename)}/download`, {
+      headers: { Authorization: `Bearer ${tokenStore.access}` },
+    })
+      .then((r) => r.blob())
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+  };
+
+  return (
+    <section className="panel">
+      <div className="page-head row">
+        <h2 style={{ margin: 0 }}>Database backups</h2>
+        <button className="btn btn-primary" onClick={create} disabled={creating}>
+          {creating ? 'Creating…' : 'Create backup now'}
+        </button>
+      </div>
+      <p className="muted" style={{ marginTop: 4 }}>
+        On-demand full-database dumps (pg_dump, custom format). Restore is a manual
+        operation by design — see the runbook — not a one-click action here.
+      </p>
+      {error && <div className="alert alert-error">{error}</div>}
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Filename</th>
+              <th className="num">Size</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {!backups && (
+              <tr>
+                <td colSpan={4} className="muted">
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {backups && backups.length === 0 && (
+              <tr>
+                <td colSpan={4} className="muted">
+                  No backups yet.
+                </td>
+              </tr>
+            )}
+            {backups?.map((b) => (
+              <tr key={b.filename}>
+                <td>{new Date(b.createdAt).toLocaleString('en-CA')}</td>
+                <td className="mono" style={{ fontSize: 12 }}>{b.filename}</td>
+                <td className="num">{fmtBytes(b.sizeBytes)}</td>
+                <td>
+                  <button className="btn btn-ghost" onClick={() => download(b.filename)}>
+                    Download
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (PDF export shipped)
+**Last updated:** 2026-07-19 (on-demand DB backups shipped)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,25 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 11) — on-demand DB backups (Admin console)
+- **Backup creation/listing/download** — the last safely-buildable item off the "smaller
+  roadmapped items" list. `POST/GET /admin/backups` + `GET /admin/backups/:filename/download`,
+  `pg_dump` invoked via `execFile` with a fixed argv array (never a shell string — no
+  command-injection surface) against the superuser `DIRECT_URL`. Deliberately built **only
+  the safe half**: no restore-from-backup endpoint exists, because overwriting the live
+  database is destructive enough that it shouldn't be a one-click API action without an
+  explicit human decision at the time — see the caveats section below for the manual
+  `pg_restore` procedure instead.
+  Caught and fixed a real bug during verification: raw `pg_dump` rejects Prisma's `?schema=`
+  connection-string query parameter outright (`invalid URI query parameter: "schema"`) — now
+  stripped before use. Verified thoroughly: created a real backup and inspected it read-only
+  with `pg_restore --list` (409 TOC entries, confirmed `Patient` TABLE DATA present — proving
+  the superuser connection actually bypassed RLS rather than silently dumping zero patient
+  rows), downloaded it and confirmed byte-for-byte size match, confirmed a path-traversal
+  filename attempt gets a clean 400, confirmed a non-owner request gets 403, and confirmed
+  in-browser (Playwright) that clicking "Create backup now" then "Download" produces a real
+  file with the expected server-generated name. Admin page gained a "Database backups" panel.
 
 ### Shipped this session (2026-07-19, part 10) — PDF export
 - **PDF export** for Finance (last buildable item off the Phase 4 export-formats gap; a real
@@ -224,7 +243,9 @@ for location-scoped writes (`76bbea3`).
   build), on every push/PR to `main`. Verified green on GitHub Actions.
 - [ ] Canadian-residency hosting (AWS ca-central-1 / Azure Canada), TLS 1.3
 - [ ] Rotate secrets before prod: `pharmacy_app` DB password, JWT secrets, `FIELD_ENCRYPTION_KEY`
-- [ ] Backup / point-in-time recovery / DR runbook
+- [~] **On-demand backup creation/download — DONE** (Admin console, `pg_dump` via
+  `execFile`). Still needed: automated/scheduled backups, point-in-time recovery, and a
+  full DR runbook (restore is intentionally manual — see caveats section).
 - [ ] Managed PostgreSQL (replace the local portable instance)
 
 ### 4. Compliance sign-off gates (before production — non-negotiable per spec)
@@ -252,7 +273,8 @@ for location-scoped writes (`76bbea3`).
 - [x] Fine-grained "2h-after-due" overdue escalation — **done this session**
 - [x] QR codes — **done this session**
 - [x] Keyboard shortcuts — **done this session** (global search command palette, Ctrl/Cmd+K)
-- [ ] i18n · backup-restore UI · custom fields
+- [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
+- [ ] i18n · custom fields
 
 ---
 
@@ -294,6 +316,10 @@ Typecheck: `npm run typecheck`.
   Rotate before any real deployment.
 - `.localdb/` (the portable Postgres binaries + data) is gitignored — it stays on this
   machine and won't travel via git.
+- **Backup restore is manual by design** (no API endpoint does this — see "Shipped" below
+  for why). To restore a dump created via the Admin console's "Create backup now":
+  `pg_restore --clean --if-exists --dbname="<DIRECT_URL, superuser>" path/to/backup.dump`.
+  Test against a scratch database first, never directly against production.
 
 ---
 

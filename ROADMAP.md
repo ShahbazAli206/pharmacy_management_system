@@ -236,8 +236,22 @@ Legend: [x] done · [~] partial · [ ] not started
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
-- Bull/Redis job queue; WebRTC/HLS streaming; i18n/theme manager;
-  backup/restore dashboard UI; custom-fields.
+- Bull/Redis job queue; WebRTC/HLS streaming; i18n/theme manager; custom-fields.
+
+- [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
+  `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv
+  array (no shell string, so no command-injection surface) against the superuser `DIRECT_URL`
+  — dumping via the app's own least-privilege `pharmacy_app` role would silently produce an
+  RLS-filtered backup missing every patient-table row, since pg_dump never sets our
+  `app.is_owner`/`app.pharmacy_id` GUCs. Filenames are server-generated only; the download
+  route rejects anything not matching that exact pattern (path-traversal guard). **Deliberately
+  no restore endpoint** — overwriting the live database is destructive enough that it
+  shouldn't be a one-click API action; see STATUS.md for the manual `pg_restore` procedure.
+  Verified live: created a real backup, confirmed via `pg_restore --list` that it's a valid
+  409-entry archive including `Patient` table data (proving the RLS-bypass actually worked),
+  confirmed the download endpoint serves the right bytes, confirmed a path-traversal attempt
+  and a non-owner request both get rejected. Caught and fixed a real bug in the process: raw
+  `pg_dump` rejects Prisma's `?schema=` connection-string query param outright.
 
 ---
 

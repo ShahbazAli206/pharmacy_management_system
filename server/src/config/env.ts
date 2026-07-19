@@ -8,6 +8,10 @@ const schema = z.object({
   PORT: z.coerce.number().default(4000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  // Superuser connection (Prisma reads this directly for migrations/seed); the
+  // backup service also needs it to dump past RLS. Optional here since not
+  // every deployment runs backups from the app process.
+  DIRECT_URL: z.string().optional(),
   JWT_ACCESS_SECRET: z.string().min(8, 'JWT_ACCESS_SECRET too short'),
   JWT_REFRESH_SECRET: z.string().min(8, 'JWT_REFRESH_SECRET too short'),
   JWT_ACCESS_TTL: z.coerce.number().default(900),
@@ -23,6 +27,11 @@ const schema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().default(300),
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().default(20),
+
+  // On-demand DB backups (admin console). PG_DUMP_PATH assumes pg_dump is on
+  // PATH unless overridden (e.g. a portable/non-standard Postgres install).
+  PG_DUMP_PATH: z.string().default('pg_dump'),
+  BACKUP_DIR: z.string().default('backups'),
 });
 
 const parsed = schema.safeParse(process.env);

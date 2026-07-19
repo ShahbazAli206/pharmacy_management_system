@@ -9,6 +9,8 @@ import { ROLE_PERMISSIONS } from '../../constants/permissions';
 import { asyncHandler, badRequest, unauthorized } from '../../utils/httpError';
 import { code39Svg } from '../../utils/barcode';
 import { qrCodeSvg } from '../../utils/qrcode';
+import { createBackup, listBackups, resolveBackupPath } from '../../services/backup';
+import { recordAudit } from '../../services/audit';
 
 const router = Router();
 router.use(authenticate);
@@ -88,6 +90,43 @@ router.get(
     } catch (e) {
       throw badRequest((e as Error).message);
     }
+  }),
+);
+
+/**
+ * On-demand full-database backup (owner-only). Creation and listing only —
+ * deliberately no restore-from-backup endpoint: overwriting the live database
+ * is destructive enough that it shouldn't be a one-click API action without an
+ * explicit human decision at the time. See STATUS.md for the manual restore
+ * procedure (pg_restore against a chosen dump).
+ */
+router.post(
+  '/backups',
+  requirePermission(PERMISSIONS.SYSTEM_MONITOR),
+  asyncHandler(async (req, res) => {
+    const backup = await createBackup();
+    await recordAudit({ action: 'CREATE', entity: 'Backup', entityId: backup.filename, req });
+    res.status(201).json(backup);
+  }),
+);
+
+router.get(
+  '/backups',
+  requirePermission(PERMISSIONS.SYSTEM_MONITOR),
+  asyncHandler(async (_req, res) => {
+    res.json(await listBackups());
+  }),
+);
+
+router.get(
+  '/backups/:filename/download',
+  requirePermission(PERMISSIONS.SYSTEM_MONITOR),
+  asyncHandler(async (req, res, next) => {
+    const filePath = resolveBackupPath(req.params.filename);
+    await recordAudit({ action: 'EXPORT', entity: 'Backup', entityId: req.params.filename, req });
+    res.download(filePath, (err) => {
+      if (err && !res.headersSent) next(err);
+    });
   }),
 );
 
