@@ -300,6 +300,12 @@ Legend: [x] done · [~] partial · [ ] not started
   discrepancy workflow). Multiple dynamic notice strings with 1-3 interpolated values each
   (e.g. `t('discrepancyNotice', { value, name })`, `t('countBalancedNotice', { name, qty })`).
   Verified in-browser across all three pages. 73/73 tests still pass.
+- [x] **i18n coverage, round 5**: Transfers and Finance also fully translated. Finance moved
+  a module-scope `AP_BUCKETS` label array into a `labelKey`-driven list so it could resolve
+  through `t()` (it previously held hardcoded English strings outside the component, where
+  no `t()` is in scope). Verified in-browser, including two interpolated headings
+  ("Écart budgétaire — 2026-07", AP-aging's "{{count}} unpaid · {{amount}} owed"). 73/73
+  tests still pass.
 
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
@@ -307,8 +313,8 @@ Legend: [x] done · [~] partial · [ ] not started
 - Bull/Redis job queue; WebRTC/HLS streaming; theme manager; i18n coverage for the
   remaining pages beyond the persistent chrome + Login + Settings + Owner Dashboard +
   Location Dashboard + Patients + Products + Inventory + Prescriptions + Compliance +
-  Prescribers + Recalls + Narcotics already translated (~14 pages left, same `t('key')`
-  pattern to extend).
+  Prescribers + Recalls + Narcotics + Transfers + Finance already translated (~12 pages
+  left, same `t('key')` pattern to extend).
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv

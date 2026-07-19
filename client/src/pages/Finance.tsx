@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, tokenStore } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
+import type { TranslationKey } from '../lib/i18n/translations';
 import type { BudgetVariance, CashFlowForecast, ExpenseRow, PLReport } from '../lib/types';
 
 const CATEGORIES = [
@@ -15,12 +17,12 @@ const money = (cents: number) =>
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
 
 type ApBucketKey = 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90plus';
-const AP_BUCKETS: { key: ApBucketKey; label: string }[] = [
-  { key: 'current', label: 'Current' },
-  { key: 'd1_30', label: '1–30 days' },
-  { key: 'd31_60', label: '31–60 days' },
-  { key: 'd61_90', label: '61–90 days' },
-  { key: 'd90plus', label: '90+ days' },
+const AP_BUCKET_KEYS: { key: ApBucketKey; labelKey: TranslationKey }[] = [
+  { key: 'current', labelKey: 'apBucketCurrent' },
+  { key: 'd1_30', labelKey: 'apBucket1_30' },
+  { key: 'd31_60', labelKey: 'apBucket31_60' },
+  { key: 'd61_90', labelKey: 'apBucket61_90' },
+  { key: 'd90plus', labelKey: 'apBucket90plus' },
 ];
 interface ApAging {
   buckets: Record<ApBucketKey, { count: number; amountCents: number }>;
@@ -30,6 +32,7 @@ interface ApAging {
 
 export function Finance() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const [pl, setPl] = useState<PLReport | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
@@ -94,10 +97,10 @@ export function Finance() {
         method: 'PUT',
         body: JSON.stringify({ pharmacyId: user.pharmacy.id, category, month, amountCents }),
       });
-      setNotice('Budget saved.');
+      setNotice(t('budgetSavedNotice'));
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Failed to save budget');
+      setError(e instanceof ApiError ? e.message : t('failedToSaveBudget'));
     }
   };
 
@@ -107,15 +110,15 @@ export function Finance() {
     <div>
       <header className="page-head row">
         <div>
-          <h1>Finance</h1>
-          <p className="muted">Profit & loss and expense management {isOwner && '· owner view'}</p>
+          <h1>{t('navFinance')}</h1>
+          <p className="muted">{t('financeSubtitle')} {isOwner && t('ownerViewSuffix')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" onClick={exportCsv}>
-            Export expenses CSV
+            {t('exportExpensesCsvButton')}
           </button>
           <button className="btn" onClick={exportExpensesPdf}>
-            Export expenses PDF
+            {t('exportExpensesPdfButton')}
           </button>
         </div>
       </header>
@@ -123,26 +126,26 @@ export function Finance() {
       {pl && (
         <div className="stat-grid">
           <div className="stat-card">
-            <div className="stat-label">Revenue (MTD)</div>
+            <div className="stat-label">{t('statRevenueMtd')}</div>
             <div className="stat-value">{money(pl.revenueCents)}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Expenses (MTD)</div>
+            <div className="stat-label">{t('statExpensesMtd')}</div>
             <div className="stat-value">{money(pl.totalExpensesCents)}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Net income</div>
+            <div className="stat-label">{t('statNetIncome')}</div>
             <div className="stat-value" style={{ color: pl.netIncomeCents >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
               {money(pl.netIncomeCents)}
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">HST/GST collected</div>
+            <div className="stat-label">{t('statHstGstCollected')}</div>
             <div className="stat-value">{money(pl.taxCollectedCents)}</div>
           </div>
           <div className="stat-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button className="btn btn-ghost" onClick={exportPlPdf}>
-              Download P&amp;L PDF
+              {t('downloadPlPdfButton')}
             </button>
           </div>
         </div>
@@ -151,13 +154,13 @@ export function Finance() {
       {ap && ap.count > 0 && (
         <section className="panel">
           <div className="page-head row">
-            <h2 style={{ margin: 0 }}>Accounts payable aging</h2>
+            <h2 style={{ margin: 0 }}>{t('apAgingHeading')}</h2>
             <span className="muted">
-              {ap.count} unpaid · {money(ap.totalOwedCents)} owed
+              {t('unpaidCountLabel', { count: ap.count, amount: money(ap.totalOwedCents) })}
             </span>
           </div>
           <div className="stat-grid">
-            {AP_BUCKETS.map(({ key, label }) => {
+            {AP_BUCKET_KEYS.map(({ key, labelKey }) => {
               const b = ap.buckets[key];
               const color =
                 b.amountCents === 0
@@ -169,11 +172,11 @@ export function Finance() {
                       : 'var(--warn)';
               return (
                 <div className="stat-card" key={key}>
-                  <div className="stat-label">{label}</div>
+                  <div className="stat-label">{t(labelKey)}</div>
                   <div className="stat-value" style={{ color }}>
                     {money(b.amountCents)}
                   </div>
-                  <div className="stat-sub">{b.count} item(s)</div>
+                  <div className="stat-sub">{t('itemsCountLabel', { count: b.count })}</div>
                 </div>
               );
             })}
@@ -189,16 +192,16 @@ export function Finance() {
 
       {cashFlow && cashFlow.history.length > 0 && (
         <section className="panel">
-          <h2>Cash-flow forecast</h2>
+          <h2>{t('cashFlowForecastHeading')}</h2>
           <p className="muted" style={{ marginTop: -8 }}>{cashFlow.method}</p>
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Month</th>
-                  <th className="num">Revenue</th>
-                  <th className="num">Expenses</th>
-                  <th className="num">Net cash flow</th>
+                  <th>{t('colMonth')}</th>
+                  <th className="num">{t('colRevenue')}</th>
+                  <th className="num">{t('colExpenses')}</th>
+                  <th className="num">{t('colNetCashFlow')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -215,7 +218,7 @@ export function Finance() {
                 {cashFlow.forecast.map((f) => (
                   <tr key={f.month}>
                     <td>
-                      {f.month} <span className="badge badge-muted">forecast</span>
+                      {f.month} <span className="badge badge-muted">{t('forecastBadge')}</span>
                     </td>
                     <td className="num">—</td>
                     <td className="num">—</td>
@@ -233,26 +236,29 @@ export function Finance() {
       {variance && (
         <section className="panel">
           <div className="page-head row">
-            <h2 style={{ margin: 0 }}>Budget variance — {variance.month}</h2>
+            <h2 style={{ margin: 0 }}>{t('budgetVarianceHeading', { month: variance.month })}</h2>
             <span className="muted">
-              Total: {money(variance.totals.actualCents)} actual vs. {money(variance.totals.budgetedCents)} budgeted
+              {t('budgetVarianceTotals', {
+                actual: money(variance.totals.actualCents),
+                budgeted: money(variance.totals.budgetedCents),
+              })}
             </span>
           </div>
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Category</th>
-                  <th className="num">Budgeted</th>
-                  <th className="num">Actual</th>
-                  <th className="num">Variance</th>
+                  <th>{t('colCategory')}</th>
+                  <th className="num">{t('colBudgeted')}</th>
+                  <th className="num">{t('colActual')}</th>
+                  <th className="num">{t('colVariance')}</th>
                 </tr>
               </thead>
               <tbody>
                 {variance.lines.length === 0 && (
                   <tr>
                     <td colSpan={4} className="muted">
-                      No budgets set for this month.
+                      {t('noBudgetsSetThisMonth')}
                     </td>
                   </tr>
                 )}
@@ -276,17 +282,17 @@ export function Finance() {
       )}
 
       <section className="panel">
-        <h2>Expenses</h2>
+        <h2>{t('expensesHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Vendor</th>
-                <th className="num">Amount</th>
-                <th>Status</th>
+                <th>{t('colDate')}</th>
+                <th>{t('colCategory')}</th>
+                <th>{t('colDescription')}</th>
+                <th>{t('colVendor')}</th>
+                <th className="num">{t('colAmount')}</th>
+                <th>{t('colStatus')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -294,7 +300,7 @@ export function Finance() {
               {expenses.length === 0 && (
                 <tr>
                   <td colSpan={7} className="muted">
-                    No expenses recorded.
+                    {t('noExpensesRecorded')}
                   </td>
                 </tr>
               )}
@@ -314,10 +320,10 @@ export function Finance() {
                     {e.status === 'SUBMITTED' && can('expense:approve') && e.submittedByUserId !== user?.id && (
                       <span style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-primary" onClick={() => decide(e.id, 'APPROVED')}>
-                          Approve
+                          {t('approveButton')}
                         </button>
                         <button className="btn" onClick={() => decide(e.id, 'REJECTED')}>
-                          Reject
+                          {t('rejectButton')}
                         </button>
                       </span>
                     )}
@@ -333,6 +339,7 @@ export function Finance() {
 }
 
 function SetBudgetForm({ onSave }: { onSave: (category: string, month: string, amountCents: number) => Promise<void> }) {
+  const { t } = useI18n();
   const now = new Date();
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
@@ -355,7 +362,7 @@ function SetBudgetForm({ onSave }: { onSave: (category: string, month: string, a
   return (
     <div className="form-grid" style={{ marginTop: 16 }}>
       <label className="field">
-        Category
+        {t('colCategory')}
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -365,15 +372,15 @@ function SetBudgetForm({ onSave }: { onSave: (category: string, month: string, a
         </select>
       </label>
       <label className="field">
-        Month
+        {t('colMonth')}
         <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(`${e.target.value}-01`)} />
       </label>
       <label className="field">
-        Budget amount (CAD)
+        {t('budgetAmountLabel')}
         <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
       </label>
       <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
-        {busy ? 'Saving…' : 'Set budget'}
+        {busy ? t('saving') : t('setBudgetButton')}
       </button>
     </div>
   );

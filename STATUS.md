@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (i18n coverage extended to 3 more pages: Prescribers, Recalls, Narcotics)
+**Last updated:** 2026-07-19 (i18n coverage extended to 2 more pages: Transfers, Finance)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,19 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 19) — i18n coverage extended (Transfers, Finance)
+- Continued extending i18n: fully translated **Transfers** (request form, approve/reject/
+  cancel notices, route/status table) and **Finance** (P&L stats, AP-aging, cash-flow
+  forecast, budget variance, expenses table, budget-setting form).
+  Finance required lifting a module-scope `AP_BUCKETS` label array into the component as a
+  `labelKey`-driven list, since it originally held hardcoded English strings defined outside
+  the component where `t()` isn't in scope — a pattern worth watching for on future pages
+  (any translatable data table defined as a module-level constant).
+  Verified in-browser via Playwright, including two interpolated headings rendering
+  correctly: the budget-variance heading with a live month value ("Écart budgétaire —
+  2026-07") and the AP-aging summary line with two interpolated values. 73/73 tests still
+  pass. ~12 pages remain English-only.
 
 ### Shipped this session (2026-07-19, part 18) — i18n coverage extended (Prescribers, Recalls, Narcotics)
 - Continued extending i18n on "continue": fully translated **Prescribers, Recalls (both
@@ -433,10 +446,10 @@ for location-scoped writes (`76bbea3`).
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
 - [x] Custom fields — **done this session, extended to Products this session too** (Patients +
   Products both supported now)
-- [x] i18n — **done this session, extended three times more this session** (English/French;
+- [x] i18n — **done this session, extended four times more this session** (English/French;
   chrome + Login + Settings + Owner/Location dashboards + Patients + Products + Inventory +
-  Prescriptions + Compliance + Prescribers + Recalls + Narcotics now translated, ~14 other
-  pages still English-only — see "Shipped" for how to extend)
+  Prescriptions + Compliance + Prescribers + Recalls + Narcotics + Transfers + Finance now
+  translated, ~12 other pages still English-only — see "Shipped" for how to extend)
 
 ---
 

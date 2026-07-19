@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 
 interface PharmacyOpt {
   id: string;
@@ -40,6 +41,7 @@ const fmtDate = (s: string) => new Date(s).toLocaleString('en-CA');
 
 export function Transfers() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const canRequest = can('inventory:write');
   const canApprove = can('pharmacy:manage');
@@ -63,16 +65,27 @@ export function Transfers() {
     void load();
   }, [load]);
 
+  const NOTICE_BY_ACTION = {
+    approve: t('transferApprovedNotice'),
+    reject: t('transferRejectedNotice'),
+    cancel: t('transferCancelledNotice'),
+  } as const;
+  const FAILED_BY_ACTION = {
+    approve: t('failedToApproveTransfer'),
+    reject: t('failedToRejectTransfer'),
+    cancel: t('failedToCancelTransfer'),
+  } as const;
+
   const decide = async (id: string, action: 'approve' | 'reject' | 'cancel') => {
     setBusyId(id);
     setError(null);
     setNotice(null);
     try {
       await api(`/transfers/${id}/${action}`, { method: 'POST', body: JSON.stringify({}) });
-      setNotice(`Transfer ${action === 'approve' ? 'approved — stock moved' : action + 'ed'}.`);
+      setNotice(NOTICE_BY_ACTION[action]);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : `Failed to ${action} transfer`);
+      setError(e instanceof ApiError ? e.message : FAILED_BY_ACTION[action]);
     } finally {
       setBusyId(null);
     }
@@ -81,8 +94,8 @@ export function Transfers() {
   return (
     <div>
       <header className="page-head">
-        <h1>Stock Transfers</h1>
-        <p className="muted">Inter-pharmacy stock movement — request, owner approval, FEFO transfer</p>
+        <h1>{t('navTransfers')}</h1>
+        <p className="muted">{t('stockTransfersSubtitle')}</p>
       </header>
 
       {notice && (
@@ -107,9 +120,9 @@ export function Transfers() {
 
       <section className="panel">
         <div className="page-head row">
-          <h2 style={{ margin: 0 }}>Transfers</h2>
+          <h2 style={{ margin: 0 }}>{t('navTransfers')}</h2>
           <button className="btn btn-ghost" onClick={() => void load()}>
-            Refresh
+            {t('refreshButton')}
           </button>
         </div>
 
@@ -117,12 +130,12 @@ export function Transfers() {
           <table className="table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Route</th>
-                <th className="num">Qty</th>
-                <th>Status</th>
-                <th>Requested by</th>
-                <th>When</th>
+                <th>{t('colProduct')}</th>
+                <th>{t('colRoute')}</th>
+                <th className="num">{t('colQty')}</th>
+                <th>{t('colStatus')}</th>
+                <th>{t('colRequestedBy')}</th>
+                <th>{t('colDate')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -130,75 +143,75 @@ export function Transfers() {
               {!rows && (
                 <tr>
                   <td colSpan={7} className="muted">
-                    Loading transfers…
+                    {t('loadingTransfers')}
                   </td>
                 </tr>
               )}
               {rows && rows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="muted">
-                    No transfers yet.
+                    {t('noTransfersYet')}
                   </td>
                 </tr>
               )}
-              {rows?.map((t) => {
-                const mine = t.requestedBy != null; // requester actions handled below
+              {rows?.map((row) => {
+                const mine = row.requestedBy != null; // requester actions handled below
                 return (
-                  <tr key={t.id}>
+                  <tr key={row.id}>
                     <td>
-                      {t.product.name} {t.product.strength}
-                      {t.product.isControlled && (
+                      {row.product.name} {row.product.strength}
+                      {row.product.isControlled && (
                         <span className="badge badge-danger" style={{ marginLeft: 6 }}>
-                          Controlled
+                          {t('controlledBadge')}
                         </span>
                       )}
                     </td>
                     <td className="mono" style={{ fontSize: 12 }}>
-                      {t.fromPharmacy.code} → {t.toPharmacy.code}
+                      {row.fromPharmacy.code} → {row.toPharmacy.code}
                     </td>
-                    <td className="num">{t.quantity}</td>
+                    <td className="num">{row.quantity}</td>
                     <td>
-                      <span className={`badge ${STATUS_BADGE[t.status]}`}>{t.status}</span>
+                      <span className={`badge ${STATUS_BADGE[row.status]}`}>{row.status}</span>
                     </td>
                     <td>
-                      {t.requestedBy ? `${t.requestedBy.firstName} ${t.requestedBy.lastName}` : '—'}
-                      {t.approvedBy && (
+                      {row.requestedBy ? `${row.requestedBy.firstName} ${row.requestedBy.lastName}` : '—'}
+                      {row.approvedBy && (
                         <div className="muted" style={{ fontSize: 11 }}>
-                          by {t.approvedBy.firstName} {t.approvedBy.lastName}
+                          {t('byPrefix')} {row.approvedBy.firstName} {row.approvedBy.lastName}
                         </div>
                       )}
                     </td>
                     <td className="muted" style={{ fontSize: 12 }}>
-                      {fmtDate(t.createdAt)}
+                      {fmtDate(row.createdAt)}
                     </td>
                     <td>
-                      {t.status === 'REQUESTED' && (
+                      {row.status === 'REQUESTED' && (
                         <span style={{ display: 'flex', gap: 6 }}>
                           {canApprove && (
                             <>
                               <button
                                 className="btn btn-primary"
-                                disabled={busyId === t.id}
-                                onClick={() => decide(t.id, 'approve')}
+                                disabled={busyId === row.id}
+                                onClick={() => decide(row.id, 'approve')}
                               >
-                                Approve
+                                {t('approveButton')}
                               </button>
                               <button
                                 className="btn"
-                                disabled={busyId === t.id}
-                                onClick={() => decide(t.id, 'reject')}
+                                disabled={busyId === row.id}
+                                onClick={() => decide(row.id, 'reject')}
                               >
-                                Reject
+                                {t('rejectButton')}
                               </button>
                             </>
                           )}
                           {!canApprove && canRequest && mine && (
                             <button
                               className="btn"
-                              disabled={busyId === t.id}
-                              onClick={() => decide(t.id, 'cancel')}
+                              disabled={busyId === row.id}
+                              onClick={() => decide(row.id, 'cancel')}
                             >
-                              Cancel
+                              {t('cancel')}
                             </button>
                           )}
                         </span>
@@ -228,6 +241,7 @@ function RequestForm({
   onError: (m: string | null) => void;
   onCreated: (msg: string) => void;
 }) {
+  const { t } = useI18n();
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
   const [search, setSearch] = useState('');
@@ -285,9 +299,9 @@ function RequestForm({
       setQuantity(1);
       setReason('');
       setToId('');
-      onCreated('Transfer requested — awaiting owner approval.');
+      onCreated(t('transferRequestedNotice'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to request transfer');
+      onError(e instanceof ApiError ? e.message : t('failedToRequestTransfer'));
     } finally {
       setBusy(false);
     }
@@ -295,13 +309,13 @@ function RequestForm({
 
   return (
     <section className="panel">
-      <h2>Request a transfer</h2>
+      <h2>{t('requestTransferHeading')}</h2>
       <div className="form-grid">
         <label className="field">
-          From
+          {t('fromLabel')}
           {isOwner ? (
             <select value={fromId} onChange={(e) => setFromId(e.target.value)}>
-              <option value="">Select source…</option>
+              <option value="">{t('selectSourceOption')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.code})
@@ -309,14 +323,14 @@ function RequestForm({
               ))}
             </select>
           ) : (
-            <input value={ownLocation?.name ?? 'Your location'} disabled />
+            <input value={ownLocation?.name ?? t('yourLocationPlaceholder')} disabled />
           )}
         </label>
 
         <label className="field">
-          To
+          {t('toLabel')}
           <select value={toId} onChange={(e) => setToId(e.target.value)}>
-            <option value="">Select destination…</option>
+            <option value="">{t('selectDestinationOption')}</option>
             {destinations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name} ({l.code})
@@ -326,27 +340,27 @@ function RequestForm({
         </label>
 
         <label className="field">
-          Product
+          {t('colProduct')}
           {product ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontWeight: 600 }}>
                 {product.name} {product.strength}
               </span>
               <button className="btn btn-ghost" style={{ width: 'auto', marginTop: 0 }} onClick={() => setProduct(null)}>
-                change
+                {t('changeButton')}
               </button>
             </div>
           ) : (
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name or DIN…"
+              placeholder={t('searchNameOrDinPlaceholder')}
             />
           )}
         </label>
 
         <label className="field">
-          Quantity
+          {t('colQty')}
           <input
             type="number"
             min={1}
@@ -356,12 +370,12 @@ function RequestForm({
         </label>
 
         <label className="field">
-          Reason (optional)
+          {t('reasonOptionalLabel')}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Rebalance stock" />
         </label>
 
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
-          {busy ? 'Requesting…' : 'Request transfer'}
+          {busy ? t('requestingEllipsis') : t('requestTransferButton')}
         </button>
       </div>
 
@@ -386,7 +400,7 @@ function RequestForm({
                         setSearch('');
                       }}
                     >
-                      Select
+                      {t('selectButton')}
                     </button>
                   </td>
                 </tr>
