@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (custom fields shipped, plus a working patient create/edit form)
+**Last updated:** 2026-07-19 (i18n — English/French — shipped, partial coverage)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,40 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 13) — i18n (English/French), partial coverage by design
+- **i18n** — another best-guess scope call, since this backlog item had no spec either.
+  Chose **English + French specifically**, not an arbitrary language list: the schema
+  already has `Patient.preferredLanguage`, and the seed data includes Quebec locations
+  (regulatory body OPQ) — French isn't a nice-to-have there, it's a legal requirement for
+  customer-facing software under Quebec's Charter of the French Language (Bill 96).
+  Built `client/src/lib/i18n` from scratch (context provider + hook + flat dictionaries) —
+  deliberately no i18n library, since a plain key→string lookup with an English fallback has
+  no silent-failure mode worth outsourcing (unlike QR/PDF generation, where a from-scratch
+  implementation was the wrong call).
+  **Coverage is deliberately partial**: the persistent chrome (sidebar nav, user-box, role
+  labels), Login, and Settings are fully translated as one complete, verifiable slice — a
+  working demonstration of the pattern, not a claim that the whole app is bilingual. Most of
+  the other ~25 pages remain English-only; extending coverage to a page is: import
+  `useI18n`, wrap strings in `t('key')`, add the key to both dictionaries.
+  Locale resolution: personal override (localStorage, same pattern as the existing dark-mode
+  toggle) beats the system-wide default (`SystemSettings.defaultLocale`, owner-configurable)
+  beats English. Switcher lives in the sidebar, the Login page, and a dedicated Settings
+  section.
+  **Important caveat to flag before any real Quebec rollout:** the French strings are a
+  good-faith AI translation, not reviewed by a native French speaker or a Quebec compliance
+  professional — treat them as a solid starting draft, not production-ready legal-grade
+  copy.
+  Verified in-browser via Playwright (translation bugs — a missing key, a wrong dictionary
+  entry — are easy to introduce silently, so this got a real check despite being UI-only):
+  switched to French pre-login, confirmed the Login page fully translates, logged in and
+  confirmed the sidebar nav and role label are in French, confirmed the override survives a
+  full page reload, confirmed the Settings page (heading, both panel titles, the maintenance
+  toggle) is fully translated, then switched back to English from the Settings page and
+  confirmed no French leftovers anywhere. Zero unexpected console errors (only the expected
+  pre-login 401 from the best-effort system-default fetch, which fails silently by design).
+  73/73 tests still pass (no server-side changes beyond none — this was a client-only
+  feature).
 
 ### Shipped this session (2026-07-19, part 12) — custom fields (Patients) + a real patient form
 - **Custom fields** — a best-guess scope since this backlog item had no explicit spec.
@@ -305,7 +339,8 @@ for location-scoped writes (`76bbea3`).
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
 - [x] Custom fields — **done this session** (Patients only; Products need a product-management
   UI to exist first)
-- [ ] i18n
+- [x] i18n — **done this session** (English/French; chrome + Login + Settings translated,
+  ~25 other pages still English-only — see "Shipped" for how to extend)
 
 ---
 

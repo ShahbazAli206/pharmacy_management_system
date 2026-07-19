@@ -252,11 +252,31 @@ Legend: [x] done · [~] partial · [ ] not started
   in-browser via Playwright (both the patient form and the Admin definitions panel, zero
   console errors, full create→edit round-trip with the custom value correctly pre-filled).
 
+- [x] **i18n — English + French.** A best-guess scope, since this backlog item had no spec:
+  justified by two things already in the codebase, not an arbitrary language list —
+  `Patient.preferredLanguage` exists in the schema, and the seed data includes Quebec
+  locations (regulatory body OPQ), where French is a *legal* requirement for customer-facing
+  software (Charter of the French Language / Bill 96), not a nice-to-have. Built a small,
+  dependency-free `client/src/lib/i18n` (context + hook + flat dictionaries) — no library,
+  since a plain key→string lookup has no "silently wrong" failure mode the way QR/PDF
+  generation would. **Coverage is deliberately partial, not full-app**: the persistent chrome
+  (sidebar nav, user box, role labels) plus Login and Settings are fully translated as a
+  complete, verifiable slice and a working demonstration of the pattern — most of the other
+  ~25 pages remain English-only. Locale resolves as personal override (localStorage,
+  mirroring the dark-mode pattern) > system-wide default (`SystemSettings.defaultLocale`) >
+  English. Language switcher in the sidebar, Login page, and a dedicated Settings section.
+  **Caveat:** the French strings are a good-faith AI translation, not reviewed by a native
+  speaker — flag that before a real Quebec rollout. Verified in-browser (Playwright): full
+  EN→FR switch on Login, persists across reload and navigation, Settings page and nav fully
+  translated, switching back to EN leaves no French leftovers, zero console errors beyond the
+  expected pre-login 401 from the best-effort system-default fetch.
+
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
-- Bull/Redis job queue; WebRTC/HLS streaming; i18n/theme manager; custom fields for
-  entities beyond Patients (Products, once a product-management UI exists).
+- Bull/Redis job queue; WebRTC/HLS streaming; theme manager; custom fields for entities
+  beyond Patients (Products, once a product-management UI exists); i18n coverage for the
+  remaining ~25 pages beyond the chrome/Login/Settings slice already translated.
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv
