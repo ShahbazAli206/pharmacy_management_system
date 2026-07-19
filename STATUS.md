@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (i18n — English/French — shipped, partial coverage)
+**Last updated:** 2026-07-19 (French translations given a critical self-review pass)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,29 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 14) — French translations: critical self-review pass
+- Asked for "a native speaker" to review the French. **I can't do that — I'm an AI, I have
+  no way to hire or contact one.** What I did instead: a much more careful, critical
+  linguistic self-review of every French string, fixing what I found. This is still an AI
+  review, not a substitute for a real bilingual human — that caveat stands, and matters more
+  given the Charter of the French Language stakes for the Quebec locations already in this
+  app's seed data.
+  Real issues found and fixed (not just typos — grammar naturalness and consistency):
+  - **Apostrophe inconsistency** — mixed straight `'` and curly `'` depending on which JS
+    quote delimiter happened to be used; standardized to the correct French typographic
+    apostrophe everywhere.
+  - `"Mode maintenance"` → **"Mode de maintenance"** (missing the linking "de").
+  - The maintenance-mode description was grammatically terse (no explicit subject) — now
+    reads as a complete, natural sentence.
+  - The Settings subtitle dropped "your" (vos) that the English has.
+  - `"Dans l'application"` for the in-app notification channel broke the short-label
+    consistency with SMS/COURRIEL/PUSH — now **"Application"**, matching how the English
+    itself keeps this one non-verbose.
+  - `"Utiliser le paramètre du système"` was stiff for a revert button — now
+    **"Revenir au paramètre par défaut"**, which reads as a natural call-to-action.
+  Verified all six fixes render correctly in-browser via Playwright. 73/73 tests still pass
+  (translation-only change, no server code touched).
 
 ### Shipped this session (2026-07-19, part 13) — i18n (English/French), partial coverage by design
 - **i18n** — another best-guess scope call, since this backlog item had no spec either.

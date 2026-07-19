@@ -10,9 +10,14 @@
  * (sidebar nav, user box) plus Login and Settings are fully translated as a
  * complete, verifiable slice and a working demonstration of the pattern.
  * Adding a page is: import useI18n, wrap strings in t('key'), add the key
- * here. See STATUS.md for what's covered vs. not, and a caveat that these
- * French strings are a good-faith machine/AI translation, not reviewed by a
- * native speaker — flag that before relying on them for a real Quebec rollout.
+ * here. See STATUS.md for what's covered vs. not.
+ *
+ * The French strings received a careful self-review pass (grammar, natural
+ * phrasing, consistent typographic apostrophes, Quebec-French terms like
+ * "courriel"/"stupéfiants" over France-French equivalents) — but this is
+ * still an AI review, not a real bilingual human's. Get one before relying on
+ * this for a real Quebec rollout, given the Charter of the French Language
+ * stakes.
  */
 export type Locale = 'en' | 'fr';
 
@@ -126,11 +131,11 @@ const fr: Record<keyof typeof en, string> = {
   navMessages: 'Messages',
   navNotifications: 'Notifications',
   navWorkflow: 'Flux de travail',
-  navAuditLog: "Journal d'audit",
+  navAuditLog: 'Journal d’audit',
   navStaff: 'Personnel',
   navAttendance: 'Présence',
   navScheduling: 'Horaire',
-  navIncidentReports: "Rapports d'incident",
+  navIncidentReports: 'Rapports d’incident',
   navTrainingCE: 'Formation continue',
   navPerformanceReviews: 'Évaluations de rendement',
   navSettings: 'Paramètres',
@@ -147,16 +152,16 @@ const fr: Record<keyof typeof en, string> = {
   passwordLabel: 'Mot de passe',
   signIn: 'Se connecter',
   signingIn: 'Connexion en cours…',
-  loginFailedFallback: "Échec de la connexion. L'API est-elle démarrée?",
+  loginFailedFallback: 'Échec de la connexion. L’API est-elle démarrée?',
   loginSeedHint: 'Compte de démonstration :',
 
   settingsTitle: 'Paramètres',
-  settingsSubtitle: 'Configuration du système et préférences de notification',
+  settingsSubtitle: 'Configuration du système et vos préférences de notification',
   settingsSaved: 'Paramètres enregistrés.',
   systemSettingsHeading: 'Paramètres du système',
-  maintenanceModeLabel: 'Mode maintenance',
+  maintenanceModeLabel: 'Mode de maintenance',
   maintenanceModeDesc:
-    'Lorsqu’activé, le système est en lecture seule — toutes les écritures sont bloquées sauf la connexion et les paramètres.',
+    'Lorsqu’il est activé, le système passe en lecture seule : toutes les écritures sont bloquées, sauf la connexion et les paramètres.',
   on: 'ACTIVÉ',
   off: 'DÉSACTIVÉ',
   dataRetentionLabel: 'Conservation des données (jours, ≥ 3650)',
@@ -168,17 +173,17 @@ const fr: Record<keyof typeof en, string> = {
   channelSms: 'SMS',
   channelEmail: 'COURRIEL',
   channelPush: 'PUSH',
-  channelInApp: 'Dans l’application',
+  channelInApp: 'Application',
   languageHeading: 'Ma langue',
   languageDesc: 'Remplace le paramètre par défaut ci-dessus, pour votre session seulement.',
-  useSystemDefault: 'Utiliser le paramètre du système',
+  useSystemDefault: 'Revenir au paramètre par défaut',
 
   roleSystemOwner: 'Propriétaire du système',
-  roleLocationPartner: "Partenaire de l'établissement",
+  roleLocationPartner: 'Partenaire de l’établissement',
   rolePharmacistInCharge: 'Pharmacien(ne) responsable',
   rolePharmacyTechnician: 'Technicien(ne) en pharmacie',
   roleCashier: 'Caissier(ère)',
-  roleInventoryManager: "Gestionnaire d'inventaire",
+  roleInventoryManager: 'Gestionnaire d’inventaire',
   roleAccountant: 'Comptable',
 };
 
