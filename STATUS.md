@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (i18n coverage extended to 2 more pages: Audit Log, Notifications)
+**Last updated:** 2026-07-19 (i18n coverage completed — all remaining 11 pages translated: Admin, Attendance, Cameras, Documents, Incidents, Reports, Reviews, Scheduling, Staff, Training, Workflow)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,29 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 22) — i18n coverage COMPLETE (all 11 remaining pages)
+- Finished the i18n backlog in one pass: **Cameras, Workflow, Attendance, Reports, Staff,
+  Scheduling, Incidents, Reviews, Training, Documents, and Admin** — every page in the app is
+  now fully bilingual (English/French). Admin was the largest single page (health stats,
+  feature flags, role simulator, activity timeline, barcode/QR tool, database backups, custom
+  fields) and got the same `t('key')` treatment across all its sub-sections.
+  Followed the established convention throughout: raw backend enum values shown as badges
+  (e.g. transfer/incident/review status, document category, custom-field type) stay
+  untranslated by design, matching every previously-shipped page — only human-facing labels,
+  headings, buttons, notices, and dropdown option text got translated.
+  Three parallel Playwright verification passes (one per ~4 pages) caught one real bug before
+  it shipped: the Workflow page's "No {{status}} requests" empty-state message interpolated
+  the raw English status word (`status.toLowerCase()`) straight into an otherwise-French
+  sentence — e.g. "Aucune demande pending." Fixed by mapping PENDING/APPROVED/REJECTED to
+  dedicated translated words (`workflowStatusPendingLower`/etc.) before interpolating, then
+  re-verified in French. Everything else across all 11 pages rendered correctly: dropdown
+  option labels, interpolated counts/dates/names, dynamic notices, and — on Admin
+  specifically — the health-stats uptime sub-line, custom-fields entity-description sentence,
+  and a live Code39 barcode generation all interpolated correctly with no `{{placeholder}}`
+  leftovers found anywhere. Zero unexpected console errors across all pages checked.
+  73/73 tests still pass. **The i18n backlog item is now fully closed — no pages remain
+  English-only.**
 
 ### Shipped this session (2026-07-19, part 21) — i18n coverage extended (Audit Log, Notifications)
 - Continued extending i18n: fully translated **Audit Log** (heading, interpolated event-count
@@ -474,11 +497,8 @@ for location-scoped writes (`76bbea3`).
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
 - [x] Custom fields — **done this session, extended to Products this session too** (Patients +
   Products both supported now)
-- [x] i18n — **done this session, extended six times more this session** (English/French;
-  chrome + Login + Settings + Owner/Location dashboards + Patients + Products + Inventory +
-  Prescriptions + Compliance + Prescribers + Recalls + Narcotics + Transfers + Finance +
-  Messages + Point of Sale + Audit Log + Notifications now translated, ~8 other pages still
-  English-only — see "Shipped" for how to extend)
+- [x] i18n — **COMPLETE.** Every page in the app is now fully translated (English/French).
+  No pages remain English-only.
 
 ---
 
@@ -534,10 +554,12 @@ this session"). Pick one of the remaining directions, in rough priority:
 
 1. **HR module (spec §11) — DONE.** Attendance, scheduling, incident reports, training/CE,
    and performance reviews are all shipped. No HR gaps remain.
-2. **Financial extras** — cash-flow forecast, budget variance, PDF/QuickBooks export.
-3. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
+2. **i18n — DONE.** Every page is now fully bilingual (English/French). No pages remain
+   English-only.
+3. **Financial extras** — cash-flow forecast, budget variance, PDF/QuickBooks export.
+4. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
    insurance / payments) — *blocked on credentials*.
-4. **Go-live hardening** — penetration/security review (`/security-review`), managed Postgres,
+5. **Go-live hardening** — penetration/security review (`/security-review`), managed Postgres,
    CI/CD, backup/DR, secret rotation; then the compliance/privacy/pharmacist sign-off gates.
 
 Testing infra in place: `npm test` (35 unit) · `npm run test:integration` (35) ·

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
+import type { TranslationKey } from '../lib/i18n/translations';
 
 type Category = 'MEDICATION_ERROR' | 'WORKPLACE_SAFETY' | 'THEFT_SECURITY' | 'PATIENT_COMPLAINT' | 'EQUIPMENT_FAILURE' | 'OTHER';
 type Severity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -28,13 +30,13 @@ interface IncidentRow extends MyIncident {
   pharmacy: { code: string; name: string };
 }
 
-const CATEGORY_LABELS: Record<Category, string> = {
-  MEDICATION_ERROR: 'Medication error',
-  WORKPLACE_SAFETY: 'Workplace safety',
-  THEFT_SECURITY: 'Theft / security',
-  PATIENT_COMPLAINT: 'Patient complaint',
-  EQUIPMENT_FAILURE: 'Equipment failure',
-  OTHER: 'Other',
+const CATEGORY_LABEL_KEYS: Record<Category, TranslationKey> = {
+  MEDICATION_ERROR: 'categoryMedicationError',
+  WORKPLACE_SAFETY: 'categoryWorkplaceSafety',
+  THEFT_SECURITY: 'categoryTheftSecurity',
+  PATIENT_COMPLAINT: 'categoryPatientComplaint',
+  EQUIPMENT_FAILURE: 'categoryEquipmentFailure',
+  OTHER: 'categoryOther',
 };
 
 const SEVERITY_BADGE: Record<Severity, string> = {
@@ -59,6 +61,7 @@ const toLocalInput = (d: Date) => {
 
 export function Incidents() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const canTriage = can('incident:manage');
   const canViewAll = can('incident:read');
@@ -103,7 +106,13 @@ export function Incidents() {
       await api(`/incidents/${id}/${action}`, { method: 'POST', body: JSON.stringify({}) });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : `Failed to ${action} incident`);
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : action === 'resolve'
+            ? t('failedToResolveIncident')
+            : t('failedToCloseIncident'),
+      );
     } finally {
       setBusyId(null);
     }
@@ -112,8 +121,8 @@ export function Incidents() {
   return (
     <div>
       <header className="page-head">
-        <h1>Incident Reports</h1>
-        <p className="muted">File and triage workplace safety, security, and patient-complaint incidents</p>
+        <h1>{t('incidentsHeading')}</h1>
+        <p className="muted">{t('incidentsSubtitle')}</p>
       </header>
 
       {notice && (
@@ -135,30 +144,30 @@ export function Incidents() {
       />
 
       <section className="panel">
-        <h2>My reports</h2>
+        <h2>{t('myReportsHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Occurred</th>
-                <th>Category</th>
-                <th>Severity</th>
-                <th>Status</th>
-                <th>Description</th>
+                <th>{t('colOccurred')}</th>
+                <th>{t('colCategory')}</th>
+                <th>{t('colSeverity')}</th>
+                <th>{t('colStatus')}</th>
+                <th>{t('colDescription')}</th>
               </tr>
             </thead>
             <tbody>
               {(!mine || mine.length === 0) && (
                 <tr>
                   <td colSpan={5} className="muted">
-                    {mine ? 'No incidents reported.' : 'Loading…'}
+                    {mine ? t('noIncidentsReported') : t('loading')}
                   </td>
                 </tr>
               )}
               {mine?.map((r) => (
                 <tr key={r.id}>
                   <td>{fmt(r.occurredAt)}</td>
-                  <td>{CATEGORY_LABELS[r.category]}</td>
+                  <td>{t(CATEGORY_LABEL_KEYS[r.category])}</td>
                   <td>
                     <span className={`badge ${SEVERITY_BADGE[r.severity]}`}>{r.severity}</span>
                   </td>
@@ -176,18 +185,20 @@ export function Incidents() {
       {canViewAll && (
         <section className="panel">
           <div className="page-head row">
-            <h2 style={{ margin: 0 }}>{isOwner ? 'All locations' : 'Location'} incidents</h2>
+            <h2 style={{ margin: 0 }}>
+              {t('incidentsScopeHeading', { scope: isOwner ? t('allLocationsLabel') : t('locationLabel') })}
+            </h2>
             <div style={{ display: 'flex', gap: 8 }}>
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="select">
-                <option value="">All statuses</option>
-                <option value="OPEN">Open</option>
-                <option value="UNDER_REVIEW">Under review</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="CLOSED">Closed</option>
+                <option value="">{t('allStatusesOption')}</option>
+                <option value="OPEN">{t('statusOpenOption')}</option>
+                <option value="UNDER_REVIEW">{t('statusUnderReviewOption')}</option>
+                <option value="RESOLVED">{t('statusResolvedOption')}</option>
+                <option value="CLOSED">{t('statusClosedOption')}</option>
               </select>
               {isOwner && (
                 <select value={filterLoc} onChange={(e) => setFilterLoc(e.target.value)} className="select">
-                  <option value="">All locations</option>
+                  <option value="">{t('allLocationsLabel')}</option>
                   {locations.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.name}
@@ -202,12 +213,12 @@ export function Incidents() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Reported by</th>
-                  <th>Occurred</th>
-                  <th>Category</th>
-                  <th>Severity</th>
-                  <th>Status</th>
-                  <th>Description</th>
+                  <th>{t('colReportedBy')}</th>
+                  <th>{t('colOccurred')}</th>
+                  <th>{t('colCategory')}</th>
+                  <th>{t('colSeverity')}</th>
+                  <th>{t('colStatus')}</th>
+                  <th>{t('colDescription')}</th>
                   {canTriage && <th></th>}
                 </tr>
               </thead>
@@ -215,14 +226,14 @@ export function Incidents() {
                 {!rows && (
                   <tr>
                     <td colSpan={canTriage ? 7 : 6} className="muted">
-                      Loading…
+                      {t('loading')}
                     </td>
                   </tr>
                 )}
                 {rows && rows.length === 0 && (
                   <tr>
                     <td colSpan={canTriage ? 7 : 6} className="muted">
-                      No incidents found.
+                      {t('noIncidentsFound')}
                     </td>
                   </tr>
                 )}
@@ -232,7 +243,7 @@ export function Incidents() {
                       {r.reportedBy.lastName}, {r.reportedBy.firstName}
                     </td>
                     <td>{fmt(r.occurredAt)}</td>
-                    <td>{CATEGORY_LABELS[r.category]}</td>
+                    <td>{t(CATEGORY_LABEL_KEYS[r.category])}</td>
                     <td>
                       <span className={`badge ${SEVERITY_BADGE[r.severity]}`}>{r.severity}</span>
                     </td>
@@ -248,7 +259,7 @@ export function Incidents() {
                             disabled={busyId === r.id}
                             onClick={() => act(r.id, 'resolve')}
                           >
-                            Resolve
+                            {t('resolveButton')}
                           </button>
                         )}
                         {r.status === 'RESOLVED' && (
@@ -257,7 +268,7 @@ export function Incidents() {
                             disabled={busyId === r.id}
                             onClick={() => act(r.id, 'close')}
                           >
-                            Close
+                            {t('closeButton')}
                           </button>
                         )}
                       </td>
@@ -286,6 +297,7 @@ function ReportIncident({
   onCreated: (msg: string) => void;
   onError: (m: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [pharmacyId, setPharmacyId] = useState('');
   const [category, setCategory] = useState<Category>('WORKPLACE_SAFETY');
   const [severity, setSeverity] = useState<Severity>('LOW');
@@ -316,9 +328,9 @@ function ReportIncident({
       setDescription('');
       setLocation('');
       setSeverity('LOW');
-      onCreated('Incident reported.');
+      onCreated(t('incidentReportedNotice'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to report incident');
+      onError(e instanceof ApiError ? e.message : t('failedToReportIncident'));
     } finally {
       setBusy(false);
     }
@@ -326,13 +338,13 @@ function ReportIncident({
 
   return (
     <section className="panel">
-      <h2>Report an incident</h2>
+      <h2>{t('reportIncidentHeading')}</h2>
       <div className="form-grid">
         {needsLocation && (
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.code})
@@ -342,43 +354,43 @@ function ReportIncident({
           </label>
         )}
         <label className="field">
-          Category
+          {t('categoryLabel')}
           <select value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            {(Object.keys(CATEGORY_LABELS) as Category[]).map((c) => (
+            {(Object.keys(CATEGORY_LABEL_KEYS) as Category[]).map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABELS[c]}
+                {t(CATEGORY_LABEL_KEYS[c])}
               </option>
             ))}
           </select>
         </label>
         <label className="field">
-          Severity
+          {t('severityLabel')}
           <select value={severity} onChange={(e) => setSeverity(e.target.value as Severity)}>
-            <option value="LOW">Low</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="HIGH">High</option>
-            <option value="CRITICAL">Critical</option>
+            <option value="LOW">{t('severityLowOption')}</option>
+            <option value="MEDIUM">{t('severityMediumOption')}</option>
+            <option value="HIGH">{t('severityHighOption')}</option>
+            <option value="CRITICAL">{t('severityCriticalOption')}</option>
           </select>
         </label>
         <label className="field">
-          Occurred at
+          {t('occurredAtLabel')}
           <input type="datetime-local" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} />
         </label>
         <label className="field">
-          Location within pharmacy (optional)
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Dispensing counter" />
+          {t('locationWithinPharmacyOptionalLabel')}
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('locationWithinPharmacyPlaceholder')} />
         </label>
         <label className="field" style={{ gridColumn: '1 / -1' }}>
-          Description
+          {t('descriptionLabel')}
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What happened?"
+            placeholder={t('whatHappenedPlaceholder')}
             rows={3}
           />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
-          {busy ? 'Reporting…' : 'Submit report'}
+          {busy ? t('reportingEllipsis') : t('submitReportButton')}
         </button>
       </div>
     </section>

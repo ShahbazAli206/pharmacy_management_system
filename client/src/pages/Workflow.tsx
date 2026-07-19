@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
+import type { TranslationKey } from '../lib/i18n/translations';
 import { fetchLocations, type LocationOption } from '../lib/locations';
 import type { WorkflowRow } from '../lib/types';
 
 const STATUSES = ['PENDING', 'APPROVED', 'REJECTED'];
+const STATUS_LOWER_KEYS: Record<string, TranslationKey> = {
+  PENDING: 'workflowStatusPendingLower',
+  APPROVED: 'workflowStatusApprovedLower',
+  REJECTED: 'workflowStatusRejectedLower',
+};
 
 export function Workflow() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const [rows, setRows] = useState<WorkflowRow[]>([]);
   const [status, setStatus] = useState('PENDING');
@@ -45,7 +53,7 @@ export function Workflow() {
   const raise = async () => {
     if (!form.entityType.trim() || !form.entityId.trim() || !form.action.trim()) return;
     if (isOwner && !pharmacyId) {
-      setError('Select a location for this request.');
+      setError(t('selectLocationForRequest'));
       return;
     }
     setError(null);
@@ -73,20 +81,20 @@ export function Workflow() {
   return (
     <div>
       <header className="page-head">
-        <h1>Approval Workflow</h1>
-        <p className="muted">Raise and approve sensitive changes (no self-approval)</p>
+        <h1>{t('workflowHeading')}</h1>
+        <p className="muted">{t('workflowSubtitle')}</p>
       </header>
 
       {error && <div className="alert alert-error">{error}</div>}
 
       <section className="panel">
-        <h2>Raise a request</h2>
+        <h2>{t('raiseRequestHeading')}</h2>
         <div className="form-grid">
           {isOwner && (
             <label className="field">
-              Location
+              {t('locationLabel')}
               <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-                <option value="">Select location…</option>
+                <option value="">{t('selectLocationPlaceholder')}</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -96,23 +104,23 @@ export function Workflow() {
             </label>
           )}
           <label className="field">
-            Entity type
+            {t('entityTypeLabel')}
             <input value={form.entityType} onChange={(e) => setForm({ ...form, entityType: e.target.value })} placeholder="StockTransfer" />
           </label>
           <label className="field">
-            Entity ID
+            {t('entityIdLabel')}
             <input value={form.entityId} onChange={(e) => setForm({ ...form, entityId: e.target.value })} />
           </label>
           <label className="field">
-            Action
+            {t('actionLabel')}
             <input value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} placeholder="TRANSFER" />
           </label>
           <label className="field">
-            Reason
+            {t('reasonLabel')}
             <input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
           </label>
           <button className="btn btn-primary" onClick={raise} disabled={!form.entityType.trim() || !form.entityId.trim() || !form.action.trim()}>
-            Submit request
+            {t('submitRequestButton')}
           </button>
         </div>
       </section>
@@ -129,10 +137,10 @@ export function Workflow() {
           <table className="table">
             <thead>
               <tr>
-                <th>Entity</th>
-                <th>Action</th>
-                <th>Reason</th>
-                <th>Status</th>
+                <th>{t('colEntity')}</th>
+                <th>{t('colAction')}</th>
+                <th>{t('reasonLabel')}</th>
+                <th>{t('colStatus')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -140,7 +148,7 @@ export function Workflow() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="muted">
-                    No {status.toLowerCase()} requests.
+                    {t('noRequestsOfStatus', { status: t(STATUS_LOWER_KEYS[status]) })}
                   </td>
                 </tr>
               )}
@@ -161,15 +169,15 @@ export function Workflow() {
                     {r.status === 'PENDING' &&
                       (r.requestedByUserId === user?.id ? (
                         <span className="muted" style={{ fontSize: 12 }}>
-                          your request
+                          {t('yourRequestLabel')}
                         </span>
                       ) : (
                         <span style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-primary" onClick={() => decide(r.id, 'APPROVED')}>
-                            Approve
+                            {t('approveButton')}
                           </button>
                           <button className="btn" onClick={() => decide(r.id, 'REJECTED')}>
-                            Reject
+                            {t('rejectButton')}
                           </button>
                         </span>
                       ))}

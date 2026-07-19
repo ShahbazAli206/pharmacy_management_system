@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 
 interface PharmacyOpt {
   id: string;
@@ -41,6 +42,7 @@ const toLocalInput = (d: Date) => {
 
 export function Scheduling() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const canManage = can('shift:write');
   const canViewTeam = can('shift:read');
@@ -88,7 +90,13 @@ export function Scheduling() {
       await api(`/scheduling/shifts/${id}/${action}`, { method: 'POST', body: JSON.stringify({}) });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : `Failed to ${action} shift`);
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : action === 'publish'
+            ? t('failedToPublishShift')
+            : t('failedToCancelShift'),
+      );
     } finally {
       setBusyId(null);
     }
@@ -97,8 +105,8 @@ export function Scheduling() {
   return (
     <div>
       <header className="page-head">
-        <h1>Scheduling</h1>
-        <p className="muted">Staff shift schedule</p>
+        <h1>{t('schedulingHeading')}</h1>
+        <p className="muted">{t('schedulingSubtitle')}</p>
       </header>
 
       {notice && (
@@ -109,22 +117,22 @@ export function Scheduling() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <section className="panel">
-        <h2>My upcoming shifts</h2>
+        <h2>{t('myUpcomingShiftsHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Start</th>
-                <th>End</th>
-                <th>Role</th>
-                <th>Status</th>
+                <th>{t('colStart')}</th>
+                <th>{t('colEnd')}</th>
+                <th>{t('colRole')}</th>
+                <th>{t('colStatus')}</th>
               </tr>
             </thead>
             <tbody>
               {(!mine || mine.length === 0) && (
                 <tr>
                   <td colSpan={4} className="muted">
-                    {mine ? 'No upcoming shifts.' : 'Loading…'}
+                    {mine ? t('noUpcomingShifts') : t('loading')}
                   </td>
                 </tr>
               )}
@@ -162,10 +170,10 @@ export function Scheduling() {
       {canViewTeam && (
         <section className="panel">
           <div className="page-head row">
-            <h2 style={{ margin: 0 }}>Team schedule (next 14 days)</h2>
+            <h2 style={{ margin: 0 }}>{t('teamScheduleHeading')}</h2>
             {isOwner && (
               <select value={filterLoc} onChange={(e) => setFilterLoc(e.target.value)} className="select">
-                <option value="">All locations</option>
+                <option value="">{t('allLocationsLabel')}</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -179,11 +187,11 @@ export function Scheduling() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Staff</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Role</th>
-                  <th>Status</th>
+                  <th>{t('colStaff')}</th>
+                  <th>{t('colStart')}</th>
+                  <th>{t('colEnd')}</th>
+                  <th>{t('colRole')}</th>
+                  <th>{t('colStatus')}</th>
                   {canManage && <th></th>}
                 </tr>
               </thead>
@@ -191,14 +199,14 @@ export function Scheduling() {
                 {!rows && (
                   <tr>
                     <td colSpan={canManage ? 6 : 5} className="muted">
-                      Loading…
+                      {t('loading')}
                     </td>
                   </tr>
                 )}
                 {rows && rows.length === 0 && (
                   <tr>
                     <td colSpan={canManage ? 6 : 5} className="muted">
-                      No shifts scheduled.
+                      {t('noShiftsScheduled')}
                     </td>
                   </tr>
                 )}
@@ -223,7 +231,7 @@ export function Scheduling() {
                             disabled={busyId === s.id}
                             onClick={() => act(s.id, 'publish')}
                           >
-                            Publish
+                            {t('publishButton')}
                           </button>
                         )}
                         <button
@@ -231,7 +239,7 @@ export function Scheduling() {
                           disabled={busyId === s.id}
                           onClick={() => act(s.id, 'cancel')}
                         >
-                          Cancel
+                          {t('cancel')}
                         </button>
                       </td>
                     )}
@@ -261,6 +269,7 @@ function AddShift({
   onCreated: (msg: string) => void;
   onError: (m: string | null) => void;
 }) {
+  const { t } = useI18n();
   const now = new Date();
   const defaultStart = new Date(now.getTime() + 60 * 60 * 1000);
   const defaultEnd = new Date(defaultStart.getTime() + 8 * 60 * 60 * 1000);
@@ -294,9 +303,9 @@ function AddShift({
       });
       setRole('');
       setNotes('');
-      onCreated('Shift scheduled.');
+      onCreated(t('shiftScheduledNotice'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to schedule shift');
+      onError(e instanceof ApiError ? e.message : t('failedToScheduleShift'));
     } finally {
       setBusy(false);
     }
@@ -304,13 +313,13 @@ function AddShift({
 
   return (
     <section className="panel">
-      <h2>Schedule a shift</h2>
+      <h2>{t('scheduleShiftHeading')}</h2>
       <div className="form-grid">
         {needsLocation && (
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.code})
@@ -320,9 +329,9 @@ function AddShift({
           </label>
         )}
         <label className="field">
-          Staff member
+          {t('staffMemberLabel')}
           <select value={userId} onChange={(e) => setUserId(e.target.value)}>
-            <option value="">Select staff…</option>
+            <option value="">{t('selectStaffPlaceholder')}</option>
             {staff.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.lastName}, {s.firstName}
@@ -331,23 +340,23 @@ function AddShift({
           </select>
         </label>
         <label className="field">
-          Start
+          {t('colStart')}
           <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
         </label>
         <label className="field">
-          End
+          {t('colEnd')}
           <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
         </label>
         <label className="field">
-          Role/station (optional)
-          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Pharmacist" />
+          {t('roleStationOptionalLabel')}
+          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder={t('rolePlaceholderPharmacist')} />
         </label>
         <label className="field">
-          Notes (optional)
-          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Covering lunch break" />
+          {t('notesOptionalLabel')}
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('notesPlaceholderCoveringLunch')} />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
-          {busy ? 'Scheduling…' : 'Schedule shift'}
+          {busy ? t('schedulingEllipsis') : t('scheduleShiftButton')}
         </button>
       </div>
     </section>

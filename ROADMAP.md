@@ -319,16 +319,24 @@ Legend: [x] done · [~] partial · [ ] not started
   notices with interpolated counts on Notifications. Verified in-browser via Playwright
   (pager advances correctly across pages, generate-reminders notice interpolates a real count
   with no literal `{{count}}`). 73/73 tests still pass.
+- [x] **i18n coverage, round 8 — COMPLETE.** The remaining 11 pages (Cameras, Workflow,
+  Attendance, Reports, Staff, Scheduling, Incidents, Reviews, Training, Documents, Admin) all
+  fully translated in one pass. Admin (the largest page — health stats, feature flags, role
+  simulator, activity timeline, barcode/QR tool, backups, custom fields) got the same
+  treatment across every sub-section. Raw backend enum badges (status/category/type values)
+  intentionally stay untranslated, matching the convention already established on earlier
+  pages. Three parallel Playwright verification passes caught and fixed one real bug: the
+  Workflow page's empty-state message was interpolating a raw English status word into an
+  otherwise-French sentence ("Aucune demande pending.") — fixed with dedicated translated
+  status-word keys and re-verified. **No pages remain English-only; the i18n backlog item is
+  fully closed.** 73/73 tests still pass.
 
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
-- Bull/Redis job queue; WebRTC/HLS streaming; theme manager; i18n coverage for the
-  remaining pages beyond the persistent chrome + Login + Settings + Owner Dashboard +
-  Location Dashboard + Patients + Products + Inventory + Prescriptions + Compliance +
-  Prescribers + Recalls + Narcotics + Transfers + Finance + Messages + Point of Sale +
-  Audit Log + Notifications already translated (~8 pages left, same `t('key')` pattern to
-  extend).
+- Bull/Redis job queue; WebRTC/HLS streaming; theme manager.
+- i18n coverage is now **complete** — every page in the app is fully bilingual
+  (English/French). No pages remain English-only.
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv

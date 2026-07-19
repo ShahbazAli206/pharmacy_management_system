@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, tokenStore } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
+import type { TranslationKey } from '../lib/i18n/translations';
 import type { SystemHealth, AuditEntry, CustomFieldDefinition } from '../lib/types';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
@@ -12,6 +14,7 @@ const ROLE_NAMES = [
 
 export function Admin() {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
@@ -53,62 +56,62 @@ export function Admin() {
   return (
     <div>
       <header className="page-head">
-        <h1>System Administration</h1>
-        <p className="muted">Health monitoring, feature flags, and platform tools</p>
+        <h1>{t('adminHeading')}</h1>
+        <p className="muted">{t('adminSubtitle')}</p>
       </header>
 
       {health && (
         <div className="stat-grid">
           <div className="stat-card">
-            <div className="stat-label">Status</div>
+            <div className="stat-label">{t('colStatus')}</div>
             <div className="stat-value" style={{ color: 'var(--ok)' }}>
               {health.status}
             </div>
             <div className="stat-sub" style={{ color: 'var(--muted)' }}>
-              uptime {fmtUptime(health.uptimeSeconds)} · node {health.nodeVersion}
+              {t('uptimeNodeSub', { uptime: fmtUptime(health.uptimeSeconds), node: health.nodeVersion })}
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Pharmacies</div>
+            <div className="stat-label">{t('statPharmacies')}</div>
             <div className="stat-value">{health.counts.pharmacies}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Patients</div>
+            <div className="stat-label">{t('statPatients')}</div>
             <div className="stat-value">{health.counts.patients.toLocaleString()}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Prescriptions</div>
+            <div className="stat-label">{t('statPrescriptions')}</div>
             <div className="stat-value">{health.counts.prescriptions.toLocaleString()}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Open alerts</div>
+            <div className="stat-label">{t('statOpenAlerts')}</div>
             <div className="stat-value" style={{ color: health.operational.openComplianceAlerts > 0 ? 'var(--warn)' : undefined }}>
               {health.operational.openComplianceAlerts}
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Pending notifications</div>
+            <div className="stat-label">{t('statPendingNotifications')}</div>
             <div className="stat-value">{health.operational.pendingNotifications}</div>
           </div>
         </div>
       )}
 
       <section className="panel">
-        <h2>Feature flags</h2>
+        <h2>{t('featureFlagsHeading')}</h2>
         <div className="toolbar">
-          <input className="search" placeholder="new-flag-key" value={newFlag} onChange={(e) => setNewFlag(e.target.value)} />
+          <input className="search" placeholder={t('newFlagKeyPlaceholder')} value={newFlag} onChange={(e) => setNewFlag(e.target.value)} />
           <button className="btn" onClick={addFlag}>
-            Add flag
+            {t('addFlagButton')}
           </button>
         </div>
         {Object.keys(flags).length === 0 ? (
-          <p className="muted">No flags defined yet.</p>
+          <p className="muted">{t('noFlagsDefinedYet')}</p>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>Key</th>
-                <th>Enabled</th>
+                <th>{t('colKey')}</th>
+                <th>{t('colEnabled')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -117,11 +120,11 @@ export function Admin() {
                 <tr key={key}>
                   <td className="mono">{key}</td>
                   <td>
-                    <span className={`badge ${enabled ? 'badge-ok' : 'badge-muted'}`}>{enabled ? 'ON' : 'OFF'}</span>
+                    <span className={`badge ${enabled ? 'badge-ok' : 'badge-muted'}`}>{enabled ? t('on') : t('off')}</span>
                   </td>
                   <td>
                     <button className="btn" onClick={() => toggle(key, !enabled)}>
-                      {enabled ? 'Disable' : 'Enable'}
+                      {enabled ? t('disableButton') : t('enableButton')}
                     </button>
                   </td>
                 </tr>
@@ -141,6 +144,7 @@ export function Admin() {
 }
 
 function RoleSimulator() {
+  const { t } = useI18n();
   const [role, setRole] = useState('CASHIER');
   const [perms, setPerms] = useState<string[] | null>(null);
 
@@ -155,13 +159,13 @@ function RoleSimulator() {
 
   return (
     <section className="panel">
-      <h2>Role simulator</h2>
+      <h2>{t('roleSimulatorHeading')}</h2>
       <p className="muted" style={{ marginBottom: 12 }}>
-        Effective permissions granted to each role.
+        {t('roleSimulatorDesc')}
       </p>
       <div className="form-row">
         <label className="field">
-          Role
+          {t('roleLabel')}
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             {ROLE_NAMES.map((r) => (
               <option key={r} value={r}>
@@ -172,7 +176,7 @@ function RoleSimulator() {
         </label>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {perms?.length === 0 && <span className="muted">No permissions.</span>}
+        {perms?.length === 0 && <span className="muted">{t('noPermissions')}</span>}
         {perms?.map((p) => (
           <span key={p} className="badge badge-muted mono">
             {p}
@@ -184,6 +188,7 @@ function RoleSimulator() {
 }
 
 function ActivityTimeline() {
+  const { t } = useI18n();
   const [entity, setEntity] = useState('');
   const [entityId, setEntityId] = useState('');
   const [events, setEvents] = useState<AuditEntry[] | null>(null);
@@ -201,21 +206,21 @@ function ActivityTimeline() {
 
   return (
     <section className="panel">
-      <h2>Activity timeline</h2>
+      <h2>{t('activityTimelineHeading')}</h2>
       <p className="muted" style={{ marginBottom: 12 }}>
-        Immutable audit history for a specific record (e.g. Patient, Prescription, WorkflowRequest).
+        {t('activityTimelineDesc')}
       </p>
       <div className="form-row">
         <label className="field">
-          Entity
-          <input value={entity} onChange={(e) => setEntity(e.target.value)} placeholder="Prescription" />
+          {t('entityLabel')}
+          <input value={entity} onChange={(e) => setEntity(e.target.value)} placeholder={t('entityPlaceholderPrescription')} />
         </label>
         <label className="field">
-          Entity ID
+          {t('entityIdLabel')}
           <input value={entityId} onChange={(e) => setEntityId(e.target.value)} />
         </label>
         <button className="btn btn-primary" onClick={lookup} disabled={!entity.trim() || !entityId.trim()}>
-          Look up
+          {t('lookUpButton')}
         </button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
@@ -223,16 +228,16 @@ function ActivityTimeline() {
         <table className="table">
           <thead>
             <tr>
-              <th>When</th>
-              <th>Action</th>
-              <th>User</th>
+              <th>{t('colWhen')}</th>
+              <th>{t('colAction')}</th>
+              <th>{t('colUser')}</th>
             </tr>
           </thead>
           <tbody>
             {events.length === 0 && (
               <tr>
                 <td colSpan={3} className="muted">
-                  No history for this record.
+                  {t('noHistoryForRecord')}
                 </td>
               </tr>
             )}
@@ -242,7 +247,7 @@ function ActivityTimeline() {
                 <td>
                   <span className="badge badge-muted">{ev.action}</span>
                 </td>
-                <td>{ev.user ? `${ev.user.firstName} ${ev.user.lastName}` : 'system'}</td>
+                <td>{ev.user ? `${ev.user.firstName} ${ev.user.lastName}` : t('systemLabel')}</td>
               </tr>
             ))}
           </tbody>
@@ -253,6 +258,7 @@ function ActivityTimeline() {
 }
 
 function BarcodeTool() {
+  const { t } = useI18n();
   const [format, setFormat] = useState<'code39' | 'qr'>('code39');
   const [value, setValue] = useState('');
   const [svg, setSvg] = useState<string | null>(null);
@@ -268,9 +274,7 @@ function BarcodeTool() {
         headers: { Authorization: `Bearer ${tokenStore.access}` },
       });
       if (!res.ok) {
-        throw new Error(
-          format === 'qr' ? 'Could not generate QR code' : 'Could not generate barcode (Code39 supports A-Z, 0-9 and - . $ / + %)',
-        );
+        throw new Error(format === 'qr' ? t('qrGenerationFailedMsg') : t('barcodeGenerationFailedMsg'));
       }
       setSvg(await res.text());
     } catch (e) {
@@ -280,14 +284,13 @@ function BarcodeTool() {
 
   return (
     <section className="panel">
-      <h2>Barcode &amp; QR labels</h2>
+      <h2>{t('barcodeQrHeading')}</h2>
       <p className="muted" style={{ marginBottom: 12 }}>
-        Generate a label code for a DIN or shelf/patient record. QR holds far more data (e.g. a
-        full URL) than Code39.
+        {t('barcodeQrDesc')}
       </p>
       <div className="form-row">
         <label className="field">
-          Format
+          {t('formatLabel')}
           <select
             value={format}
             onChange={(e) => {
@@ -296,20 +299,20 @@ function BarcodeTool() {
               setError(null);
             }}
           >
-            <option value="code39">Code39 barcode</option>
-            <option value="qr">QR code</option>
+            <option value="code39">{t('code39Option')}</option>
+            <option value="qr">{t('qrOption')}</option>
           </select>
         </label>
         <label className="field">
-          Value
+          {t('valueLabel')}
           <input
             value={value}
             onChange={(e) => setValue(format === 'code39' ? e.target.value.toUpperCase() : e.target.value)}
-            placeholder="02240000"
+            placeholder={t('valuePlaceholderDin')}
           />
         </label>
         <button className="btn btn-primary" onClick={generate} disabled={!value.trim()}>
-          Generate
+          {t('generateButton')}
         </button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
@@ -327,6 +330,7 @@ interface BackupInfo {
 const fmtBytes = (n: number) => (n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
 function BackupsPanel() {
+  const { t } = useI18n();
   const [backups, setBackups] = useState<BackupInfo[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -374,23 +378,22 @@ function BackupsPanel() {
   return (
     <section className="panel">
       <div className="page-head row">
-        <h2 style={{ margin: 0 }}>Database backups</h2>
+        <h2 style={{ margin: 0 }}>{t('databaseBackupsHeading')}</h2>
         <button className="btn btn-primary" onClick={create} disabled={creating}>
-          {creating ? 'Creating…' : 'Create backup now'}
+          {creating ? t('creatingEllipsis') : t('createBackupNowButton')}
         </button>
       </div>
       <p className="muted" style={{ marginTop: 4 }}>
-        On-demand full-database dumps (pg_dump, custom format). Restore is a manual
-        operation by design — see the runbook — not a one-click action here.
+        {t('backupsDesc')}
       </p>
       {error && <div className="alert alert-error">{error}</div>}
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th>Created</th>
-              <th>Filename</th>
-              <th className="num">Size</th>
+              <th>{t('colCreated')}</th>
+              <th>{t('colFilename')}</th>
+              <th className="num">{t('colSize')}</th>
               <th></th>
             </tr>
           </thead>
@@ -398,14 +401,14 @@ function BackupsPanel() {
             {!backups && (
               <tr>
                 <td colSpan={4} className="muted">
-                  Loading…
+                  {t('loading')}
                 </td>
               </tr>
             )}
             {backups && backups.length === 0 && (
               <tr>
                 <td colSpan={4} className="muted">
-                  No backups yet.
+                  {t('noBackupsYet')}
                 </td>
               </tr>
             )}
@@ -416,7 +419,7 @@ function BackupsPanel() {
                 <td className="num">{fmtBytes(b.sizeBytes)}</td>
                 <td>
                   <button className="btn btn-ghost" onClick={() => download(b.filename)}>
-                    Download
+                    {t('downloadButton')}
                   </button>
                 </td>
               </tr>
@@ -431,9 +434,13 @@ function BackupsPanel() {
 const FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'] as const;
 
 const ENTITY_TYPES = ['PATIENT', 'PRODUCT'] as const;
-const ENTITY_LABELS: Record<(typeof ENTITY_TYPES)[number], string> = { PATIENT: 'Patients', PRODUCT: 'Products' };
+const ENTITY_LABEL_KEYS: Record<(typeof ENTITY_TYPES)[number], TranslationKey> = {
+  PATIENT: 'patientsOption',
+  PRODUCT: 'productsOption',
+};
 
 function CustomFieldsPanel() {
+  const { t } = useI18n();
   const [entityType, setEntityType] = useState<(typeof ENTITY_TYPES)[number]>('PATIENT');
   const [defs, setDefs] = useState<CustomFieldDefinition[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -484,7 +491,7 @@ function CustomFieldsPanel() {
       setRequired(false);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Failed to create custom field');
+      setError(e instanceof ApiError ? e.message : t('failedToCreateCustomField'));
     } finally {
       setBusy(false);
     }
@@ -501,17 +508,17 @@ function CustomFieldsPanel() {
   return (
     <section className="panel">
       <div className="page-head row">
-        <h2 style={{ margin: 0 }}>Custom fields</h2>
+        <h2 style={{ margin: 0 }}>{t('customFieldsHeading')}</h2>
         <select value={entityType} onChange={(e) => setEntityType(e.target.value as typeof entityType)}>
-          {ENTITY_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {ENTITY_LABELS[t]}
+          {ENTITY_TYPES.map((et) => (
+            <option key={et} value={et}>
+              {t(ENTITY_LABEL_KEYS[et])}
             </option>
           ))}
         </select>
       </div>
       <p className="muted" style={{ marginBottom: 12 }}>
-        Extra fields shown on the {ENTITY_LABELS[entityType].toLowerCase()} create/edit form — no code change needed.
+        {t('customFieldsDesc', { entity: t(ENTITY_LABEL_KEYS[entityType]).toLowerCase() })}
       </p>
       {error && <div className="alert alert-error">{error}</div>}
 
@@ -519,11 +526,11 @@ function CustomFieldsPanel() {
         <table className="table">
           <thead>
             <tr>
-              <th>Key</th>
-              <th>Label</th>
-              <th>Type</th>
-              <th>Required</th>
-              <th>Status</th>
+              <th>{t('colKey')}</th>
+              <th>{t('colLabel')}</th>
+              <th>{t('typeLabel')}</th>
+              <th>{t('colRequired')}</th>
+              <th>{t('colStatus')}</th>
               <th></th>
             </tr>
           </thead>
@@ -531,7 +538,7 @@ function CustomFieldsPanel() {
             {(!defs || defs.length === 0) && (
               <tr>
                 <td colSpan={6} className="muted">
-                  {defs ? 'No custom fields defined yet.' : 'Loading…'}
+                  {defs ? t('noCustomFieldsYet') : t('loading')}
                 </td>
               </tr>
             )}
@@ -540,13 +547,13 @@ function CustomFieldsPanel() {
                 <td className="mono">{d.key}</td>
                 <td>{d.label}</td>
                 <td>{d.fieldType}</td>
-                <td>{d.required ? 'Yes' : 'No'}</td>
+                <td>{d.required ? t('yesValue') : t('noValue')}</td>
                 <td>
-                  <span className={`badge ${d.active ? 'badge-ok' : 'badge-muted'}`}>{d.active ? 'Active' : 'Inactive'}</span>
+                  <span className={`badge ${d.active ? 'badge-ok' : 'badge-muted'}`}>{d.active ? t('activeBadge') : t('inactiveBadge')}</span>
                 </td>
                 <td>
                   <button className="btn btn-ghost" onClick={() => toggleActive(d)}>
-                    {d.active ? 'Deactivate' : 'Activate'}
+                    {d.active ? t('deactivateButton') : t('activateButton')}
                   </button>
                 </td>
               </tr>
@@ -557,35 +564,35 @@ function CustomFieldsPanel() {
 
       <div className="form-grid" style={{ marginTop: 16 }}>
         <label className="field">
-          Key
-          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="referred_by" />
+          {t('keyLabel')}
+          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder={t('keyPlaceholder')} />
         </label>
         <label className="field">
-          Label
-          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Referred by" />
+          {t('labelLabel')}
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('labelPlaceholder')} />
         </label>
         <label className="field">
-          Type
+          {t('typeLabel')}
           <select value={fieldType} onChange={(e) => setFieldType(e.target.value as typeof fieldType)}>
-            {FIELD_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            {FIELD_TYPES.map((ft) => (
+              <option key={ft} value={ft}>
+                {ft}
               </option>
             ))}
           </select>
         </label>
         {fieldType === 'SELECT' && (
           <label className="field">
-            Options (comma-separated)
-            <input value={options} onChange={(e) => setOptions(e.target.value)} placeholder="Walk-in, Referral, Website" />
+            {t('optionsCommaSeparatedLabel')}
+            <input value={options} onChange={(e) => setOptions(e.target.value)} placeholder={t('optionsPlaceholder')} />
           </label>
         )}
         <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
-          Required (UI hint only)
+          {t('requiredUiHintOnlyLabel')}
         </label>
         <button className="btn btn-primary" onClick={create} disabled={!valid || busy}>
-          {busy ? 'Adding…' : 'Add field'}
+          {busy ? t('addingEllipsis') : t('addFieldButton')}
         </button>
       </div>
     </section>

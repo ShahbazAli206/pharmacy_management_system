@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
+import type { TranslationKey } from '../lib/i18n/translations';
 
 type Category = 'CONTINUING_EDUCATION' | 'CERTIFICATION' | 'ORIENTATION' | 'SAFETY' | 'OTHER';
 
@@ -43,12 +45,12 @@ interface ExpiringRow {
   bucket: 'EXPIRED' | '30' | '60' | '90';
 }
 
-const CATEGORY_LABELS: Record<Category, string> = {
-  CONTINUING_EDUCATION: 'Continuing education',
-  CERTIFICATION: 'Certification',
-  ORIENTATION: 'Orientation',
-  SAFETY: 'Safety',
-  OTHER: 'Other',
+const CATEGORY_LABEL_KEYS: Record<Category, TranslationKey> = {
+  CONTINUING_EDUCATION: 'categoryContinuingEducation',
+  CERTIFICATION: 'categoryCertification',
+  ORIENTATION: 'categoryOrientation',
+  SAFETY: 'categorySafety',
+  OTHER: 'categoryOther',
 };
 
 const BUCKET_BADGE: Record<ExpiringRow['bucket'], string> = {
@@ -66,6 +68,7 @@ const toLocalDate = (d: Date) => {
 
 export function Training() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const canManage = can('training:manage');
   const canViewTeam = can('training:read');
@@ -110,8 +113,8 @@ export function Training() {
   return (
     <div>
       <header className="page-head">
-        <h1>Training &amp; CE</h1>
-        <p className="muted">Continuing-education and certification tracking</p>
+        <h1>{t('trainingHeading')}</h1>
+        <p className="muted">{t('trainingSubtitle')}</p>
       </header>
 
       {notice && (
@@ -136,16 +139,16 @@ export function Training() {
 
       {canViewTeam && expiring && expiring.length > 0 && (
         <section className="panel">
-          <h2>Expiring soon</h2>
+          <h2>{t('expiringSoonHeading')}</h2>
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Staff</th>
-                  <th>Credential</th>
-                  <th>Location</th>
-                  <th>Expires</th>
-                  <th>Status</th>
+                  <th>{t('colStaff')}</th>
+                  <th>{t('colCredential')}</th>
+                  <th>{t('colLocation')}</th>
+                  <th>{t('colExpires')}</th>
+                  <th>{t('colStatus')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,7 +160,7 @@ export function Training() {
                     <td>{fmtDate(r.expiresAt)}</td>
                     <td>
                       <span className={`badge ${BUCKET_BADGE[r.bucket]}`}>
-                        {r.bucket === 'EXPIRED' ? 'Expired' : `${r.bucket} days`}
+                        {r.bucket === 'EXPIRED' ? t('expiredBadge') : t('daysBadge', { days: r.bucket })}
                       </span>
                     </td>
                   </tr>
@@ -169,24 +172,24 @@ export function Training() {
       )}
 
       <section className="panel">
-        <h2>My training history</h2>
+        <h2>{t('myTrainingHistoryHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Completed</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Provider</th>
-                <th className="num">Hours</th>
-                <th>Expires</th>
+                <th>{t('colCompleted')}</th>
+                <th>{t('colTitle')}</th>
+                <th>{t('colCategory')}</th>
+                <th>{t('colProvider')}</th>
+                <th className="num">{t('colHours')}</th>
+                <th>{t('colExpires')}</th>
               </tr>
             </thead>
             <tbody>
               {(!mine || mine.length === 0) && (
                 <tr>
                   <td colSpan={6} className="muted">
-                    {mine ? 'No training records yet.' : 'Loading…'}
+                    {mine ? t('noTrainingRecordsYet') : t('loading')}
                   </td>
                 </tr>
               )}
@@ -194,7 +197,7 @@ export function Training() {
                 <tr key={r.id}>
                   <td>{fmtDate(r.completedAt)}</td>
                   <td>{r.title}</td>
-                  <td>{CATEGORY_LABELS[r.category]}</td>
+                  <td>{t(CATEGORY_LABEL_KEYS[r.category])}</td>
                   <td>{r.provider ?? '—'}</td>
                   <td className="num">{r.creditHours ?? '—'}</td>
                   <td>{r.expiresAt ? fmtDate(r.expiresAt) : '—'}</td>
@@ -208,10 +211,10 @@ export function Training() {
       {canViewTeam && (
         <section className="panel">
           <div className="page-head row">
-            <h2 style={{ margin: 0 }}>Team training records</h2>
+            <h2 style={{ margin: 0 }}>{t('teamTrainingRecordsHeading')}</h2>
             {isOwner && (
               <select value={filterLoc} onChange={(e) => setFilterLoc(e.target.value)} className="select">
-                <option value="">All locations</option>
+                <option value="">{t('allLocationsLabel')}</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -225,26 +228,26 @@ export function Training() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Staff</th>
-                  <th>Completed</th>
-                  <th>Title</th>
-                  <th>Category</th>
-                  <th className="num">Hours</th>
-                  <th>Expires</th>
+                  <th>{t('colStaff')}</th>
+                  <th>{t('colCompleted')}</th>
+                  <th>{t('colTitle')}</th>
+                  <th>{t('colCategory')}</th>
+                  <th className="num">{t('colHours')}</th>
+                  <th>{t('colExpires')}</th>
                 </tr>
               </thead>
               <tbody>
                 {!rows && (
                   <tr>
                     <td colSpan={6} className="muted">
-                      Loading…
+                      {t('loading')}
                     </td>
                   </tr>
                 )}
                 {rows && rows.length === 0 && (
                   <tr>
                     <td colSpan={6} className="muted">
-                      No training records found.
+                      {t('noTrainingRecordsFound')}
                     </td>
                   </tr>
                 )}
@@ -255,7 +258,7 @@ export function Training() {
                     </td>
                     <td>{fmtDate(r.completedAt)}</td>
                     <td>{r.title}</td>
-                    <td>{CATEGORY_LABELS[r.category]}</td>
+                    <td>{t(CATEGORY_LABEL_KEYS[r.category])}</td>
                     <td className="num">{r.creditHours ?? '—'}</td>
                     <td>{r.expiresAt ? fmtDate(r.expiresAt) : '—'}</td>
                   </tr>
@@ -286,6 +289,7 @@ function LogTraining({
   onLogged: (msg: string) => void;
   onError: (m: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [onBehalf, setOnBehalf] = useState(false);
   const [userId, setUserId] = useState('');
   const [pharmacyId, setPharmacyId] = useState('');
@@ -322,9 +326,9 @@ function LogTraining({
       setProvider('');
       setCreditHours('');
       setExpiresAt('');
-      onLogged('Training record logged.');
+      onLogged(t('trainingRecordLoggedNotice'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to log training record');
+      onError(e instanceof ApiError ? e.message : t('failedToLogTrainingRecord'));
     } finally {
       setBusy(false);
     }
@@ -332,22 +336,22 @@ function LogTraining({
 
   return (
     <section className="panel">
-      <h2>Log a training record</h2>
+      <h2>{t('logTrainingRecordHeading')}</h2>
       <div className="form-grid">
         {canManage && (
           <label className="field">
-            Who is this for?
+            {t('whoIsThisForLabel')}
             <select value={onBehalf ? 'other' : 'me'} onChange={(e) => setOnBehalf(e.target.value === 'other')}>
-              <option value="me">Myself</option>
-              <option value="other">Another staff member</option>
+              <option value="me">{t('myselfOption')}</option>
+              <option value="other">{t('anotherStaffMemberOption')}</option>
             </select>
           </label>
         )}
         {onBehalf && (
           <label className="field">
-            Staff member
+            {t('staffMemberLabel')}
             <select value={userId} onChange={(e) => setUserId(e.target.value)}>
-              <option value="">Select staff…</option>
+              <option value="">{t('selectStaffPlaceholder')}</option>
               {staff.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.lastName}, {s.firstName}
@@ -358,9 +362,9 @@ function LogTraining({
         )}
         {needsLocation && (
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.code})
@@ -370,37 +374,37 @@ function LogTraining({
           </label>
         )}
         <label className="field">
-          Title
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Naloxone administration course" />
+          {t('titleLabel')}
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('trainingTitlePlaceholder')} />
         </label>
         <label className="field">
-          Category
+          {t('categoryLabel')}
           <select value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-            {(Object.keys(CATEGORY_LABELS) as Category[]).map((c) => (
+            {(Object.keys(CATEGORY_LABEL_KEYS) as Category[]).map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABELS[c]}
+                {t(CATEGORY_LABEL_KEYS[c])}
               </option>
             ))}
           </select>
         </label>
         <label className="field">
-          Provider (optional)
-          <input value={provider} onChange={(e) => setProvider(e.target.value)} placeholder="OCP" />
+          {t('providerOptionalLabel')}
+          <input value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t('providerPlaceholder')} />
         </label>
         <label className="field">
-          Credit hours (optional)
+          {t('creditHoursOptionalLabel')}
           <input type="number" min="0" step="0.5" value={creditHours} onChange={(e) => setCreditHours(e.target.value)} />
         </label>
         <label className="field">
-          Completed on
+          {t('completedOnLabel')}
           <input type="date" value={completedAt} onChange={(e) => setCompletedAt(e.target.value)} />
         </label>
         <label className="field">
-          Expires on (optional)
+          {t('expiresOnOptionalLabel')}
           <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
-          {busy ? 'Logging…' : 'Log record'}
+          {busy ? t('loggingEllipsis') : t('logRecordButton')}
         </button>
       </div>
     </section>

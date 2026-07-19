@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 
 interface Shift {
   id: string;
@@ -17,14 +18,14 @@ interface TeamRow extends Shift {
 }
 
 const fmt = (s: string) => new Date(s).toLocaleString('en-CA');
-const duration = (inAt: string, outAt: string | null) => {
-  const ms = (outAt ? new Date(outAt).getTime() : Date.now()) - new Date(inAt).getTime();
-  const h = ms / 3_600_000;
-  return outAt ? `${h.toFixed(2)} h` : 'in progress';
+const duration = (inAt: string, outAt: string) => {
+  const h = (new Date(outAt).getTime() - new Date(inAt).getTime()) / 3_600_000;
+  return `${h.toFixed(2)} h`;
 };
 
 export function Attendance() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const canManage = can('user:manage');
   const canClock = !!user?.pharmacy; // owner has no location and doesn't clock in
 
@@ -55,7 +56,13 @@ export function Attendance() {
       await api(`/attendance/${action}`, { method: 'POST', body: JSON.stringify({}) });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : `Failed to ${action}`);
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : action === 'clock-in'
+            ? t('failedToClockIn')
+            : t('failedToClockOut'),
+      );
     } finally {
       setBusy(false);
     }
@@ -66,8 +73,8 @@ export function Attendance() {
   return (
     <div>
       <header className="page-head">
-        <h1>Attendance</h1>
-        <p className="muted">Clock in and out; view shift history</p>
+        <h1>{t('attendanceHeading')}</h1>
+        <p className="muted">{t('attendanceSubtitle')}</p>
       </header>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -76,18 +83,20 @@ export function Attendance() {
         <section className="panel">
           <div className="page-head row">
             <div>
-              <h2 style={{ margin: 0 }}>My status</h2>
+              <h2 style={{ margin: 0 }}>{t('myStatusHeading')}</h2>
               <p className="muted" style={{ marginTop: 4 }}>
-                {openShift ? `Clocked in since ${fmt(openShift.clockInAt)}` : 'Not clocked in'}
+                {openShift
+                  ? t('clockedInSinceNotice', { time: fmt(openShift.clockInAt) })
+                  : t('notClockedIn')}
               </p>
             </div>
             {openShift ? (
               <button className="btn" disabled={busy} onClick={() => clock('clock-out')}>
-                {busy ? '…' : 'Clock out'}
+                {busy ? '…' : t('clockOutButton')}
               </button>
             ) : (
               <button className="btn btn-primary" disabled={busy} onClick={() => clock('clock-in')}>
-                {busy ? '…' : 'Clock in'}
+                {busy ? '…' : t('clockInButton')}
               </button>
             )}
           </div>
@@ -96,24 +105,24 @@ export function Attendance() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Clock in</th>
-                  <th>Clock out</th>
-                  <th className="num">Duration</th>
+                  <th>{t('colClockIn')}</th>
+                  <th>{t('colClockOut')}</th>
+                  <th className="num">{t('colDuration')}</th>
                 </tr>
               </thead>
               <tbody>
                 {(!mine || mine.recent.length === 0) && (
                   <tr>
                     <td colSpan={3} className="muted">
-                      No shifts recorded yet.
+                      {t('noShiftsRecorded')}
                     </td>
                   </tr>
                 )}
                 {mine?.recent.map((s) => (
                   <tr key={s.id}>
                     <td>{fmt(s.clockInAt)}</td>
-                    <td>{s.clockOutAt ? fmt(s.clockOutAt) : <span className="badge badge-ok">open</span>}</td>
-                    <td className="num">{duration(s.clockInAt, s.clockOutAt)}</td>
+                    <td>{s.clockOutAt ? fmt(s.clockOutAt) : <span className="badge badge-ok">{t('openBadge')}</span>}</td>
+                    <td className="num">{s.clockOutAt ? duration(s.clockInAt, s.clockOutAt) : t('inProgressLabel')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -124,30 +133,30 @@ export function Attendance() {
 
       {canManage && (
         <section className="panel">
-          <h2>Team attendance</h2>
+          <h2>{t('teamAttendanceHeading')}</h2>
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Staff</th>
-                  <th>Location</th>
-                  <th>Clock in</th>
-                  <th>Clock out</th>
-                  <th className="num">Duration</th>
+                  <th>{t('colStaff')}</th>
+                  <th>{t('colLocation')}</th>
+                  <th>{t('colClockIn')}</th>
+                  <th>{t('colClockOut')}</th>
+                  <th className="num">{t('colDuration')}</th>
                 </tr>
               </thead>
               <tbody>
                 {!team && (
                   <tr>
                     <td colSpan={5} className="muted">
-                      Loading…
+                      {t('loading')}
                     </td>
                   </tr>
                 )}
                 {team && team.length === 0 && (
                   <tr>
                     <td colSpan={5} className="muted">
-                      No attendance records yet.
+                      {t('noAttendanceRecords')}
                     </td>
                   </tr>
                 )}
@@ -158,8 +167,8 @@ export function Attendance() {
                     </td>
                     <td className="mono" style={{ fontSize: 12 }}>{r.pharmacy.code}</td>
                     <td>{fmt(r.clockInAt)}</td>
-                    <td>{r.clockOutAt ? fmt(r.clockOutAt) : <span className="badge badge-ok">open</span>}</td>
-                    <td className="num">{duration(r.clockInAt, r.clockOutAt)}</td>
+                    <td>{r.clockOutAt ? fmt(r.clockOutAt) : <span className="badge badge-ok">{t('openBadge')}</span>}</td>
+                    <td className="num">{r.clockOutAt ? duration(r.clockInAt, r.clockOutAt) : t('inProgressLabel')}</td>
                   </tr>
                 ))}
               </tbody>

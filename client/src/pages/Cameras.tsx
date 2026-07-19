@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { CameraRow } from '../lib/types';
 
 const statusColor: Record<string, string> = {
@@ -9,6 +10,7 @@ const statusColor: Record<string, string> = {
 };
 
 export function Cameras() {
+  const { t } = useI18n();
   const [cameras, setCameras] = useState<CameraRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,19 +21,25 @@ export function Cameras() {
   }, []);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!cameras) return <div className="muted">Loading cameras…</div>;
+  if (!cameras) return <div className="muted">{t('loadingCameras')}</div>;
+
+  const statusLabel = (s: string) =>
+    s === 'OFFLINE' ? t('cameraStatusOffline') : s === 'UNKNOWN' ? t('cameraStatusUnknown') : s;
 
   return (
     <div>
       <header className="page-head">
-        <h1>Cameras</h1>
+        <h1>{t('camerasHeading')}</h1>
         <p className="muted">
-          {cameras.length} camera(s) · {cameras.filter((c) => c.status === 'ONLINE').length} online
+          {t('camerasSubtitle', {
+            count: cameras.length,
+            online: cameras.filter((c) => c.status === 'ONLINE').length,
+          })}
         </p>
       </header>
 
       {cameras.length === 0 ? (
-        <div className="panel muted">No cameras registered yet.</div>
+        <div className="panel muted">{t('noCamerasRegistered')}</div>
       ) : (
         <div className="stat-grid">
           {cameras.map((c) => (
@@ -53,7 +61,7 @@ export function Cameras() {
                   fontSize: 13,
                 }}
               >
-                {c.status === 'ONLINE' ? '▶ live feed' : c.status.toLowerCase()}
+                {c.status === 'ONLINE' ? t('liveFeedLabel') : statusLabel(c.status)}
               </div>
               <div className="stat-sub" style={{ color: 'var(--muted)' }}>
                 {c.pharmacy.code} · {c.ipAddress}
@@ -62,10 +70,7 @@ export function Cameras() {
           ))}
         </div>
       )}
-      <p className="muted">
-        Live RTSP/WebRTC streaming is proxied server-side in production; this view shows registration and
-        health status.
-      </p>
+      <p className="muted">{t('camerasFooterNote')}</p>
     </div>
   );
 }

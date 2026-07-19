@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 import { fetchLocations, type LocationOption } from '../lib/locations';
 import type { DocumentRow, SignatureRow, ImportResult } from '../lib/types';
 
@@ -21,26 +22,27 @@ function readAsBase64(file: File): Promise<string> {
 
 export function Documents() {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('documents');
   const [error, setError] = useState<string | null>(null);
 
   return (
     <div>
       <header className="page-head">
-        <h1>Documents</h1>
-        <p className="muted">Document manager, e-signatures, and bulk data import</p>
+        <h1>{t('documentsHeading')}</h1>
+        <p className="muted">{t('documentsSubtitle')}</p>
       </header>
 
       <div className="tabs">
         <button className={`tab ${tab === 'documents' ? 'active' : ''}`} onClick={() => setTab('documents')}>
-          Documents
+          {t('documentsTab')}
         </button>
         <button className={`tab ${tab === 'signatures' ? 'active' : ''}`} onClick={() => setTab('signatures')}>
-          E-signatures
+          {t('esignaturesTab')}
         </button>
         {can('data:import') && (
           <button className={`tab ${tab === 'import' ? 'active' : ''}`} onClick={() => setTab('import')}>
-            Bulk import
+            {t('bulkImportTab')}
           </button>
         )}
       </div>
@@ -56,6 +58,7 @@ export function Documents() {
 
 function DocumentsTab({ onError }: { onError: (m: string | null) => void }) {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('POLICY');
@@ -98,14 +101,14 @@ function DocumentsTab({ onError }: { onError: (m: string | null) => void }) {
     <>
       {can('document:write') && (
         <section className="panel">
-          <h2>Upload document</h2>
+          <h2>{t('uploadDocumentHeading')}</h2>
           <div className="form-grid">
             <label className="field">
-              Name
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Lease agreement 2026" />
+              {t('nameLabel')}
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('documentNamePlaceholder')} />
             </label>
             <label className="field">
-              Category
+              {t('categoryLabel')}
               <select value={category} onChange={(e) => setCategory(e.target.value)}>
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -115,34 +118,34 @@ function DocumentsTab({ onError }: { onError: (m: string | null) => void }) {
               </select>
             </label>
             <label className="field">
-              File
+              {t('fileLabel')}
               <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </label>
             <button className="btn btn-primary" onClick={upload} disabled={busy || !file || !name.trim()}>
-              {busy ? 'Uploading…' : 'Upload'}
+              {busy ? t('uploadingEllipsis') : t('uploadButton')}
             </button>
           </div>
         </section>
       )}
 
       <section className="panel">
-        <h2>Documents</h2>
+        <h2>{t('documentsHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Type</th>
-                <th className="num">Size</th>
-                <th>Uploaded</th>
+                <th>{t('colName')}</th>
+                <th>{t('colCategory')}</th>
+                <th>{t('colType')}</th>
+                <th className="num">{t('colSize')}</th>
+                <th>{t('colUploaded')}</th>
               </tr>
             </thead>
             <tbody>
               {docs.length === 0 && (
                 <tr>
                   <td colSpan={5} className="muted">
-                    No documents yet.
+                    {t('noDocumentsYet')}
                   </td>
                 </tr>
               )}
@@ -166,6 +169,7 @@ function DocumentsTab({ onError }: { onError: (m: string | null) => void }) {
 }
 
 function SignaturesTab({ onError }: { onError: (m: string | null) => void }) {
+  const { t } = useI18n();
   const [sigs, setSigs] = useState<SignatureRow[]>([]);
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [documentId, setDocumentId] = useState('');
@@ -218,12 +222,12 @@ function SignaturesTab({ onError }: { onError: (m: string | null) => void }) {
   return (
     <>
       <section className="panel">
-        <h2>Request a signature</h2>
+        <h2>{t('requestSignatureHeading')}</h2>
         <div className="form-grid">
           <label className="field">
-            Document
+            {t('documentLabel')}
             <select value={documentId} onChange={(e) => setDocumentId(e.target.value)}>
-              <option value="">Select a document…</option>
+              <option value="">{t('selectDocumentOption')}</option>
               {docs.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -232,28 +236,28 @@ function SignaturesTab({ onError }: { onError: (m: string | null) => void }) {
             </select>
           </label>
           <label className="field">
-            Signer name
+            {t('signerNameLabel')}
             <input value={signerName} onChange={(e) => setSignerName(e.target.value)} />
           </label>
           <label className="field">
-            Signer email
+            {t('signerEmailLabel')}
             <input type="email" value={signerEmail} onChange={(e) => setSignerEmail(e.target.value)} />
           </label>
           <button className="btn btn-primary" onClick={request} disabled={!documentId || !signerName.trim() || !signerEmail.trim()}>
-            Request signature
+            {t('requestSignatureButton')}
           </button>
         </div>
       </section>
 
       <section className="panel">
-        <h2>Signature requests</h2>
+        <h2>{t('signatureRequestsHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Document</th>
-                <th>Signer</th>
-                <th>Status</th>
+                <th>{t('documentLabel')}</th>
+                <th>{t('colSigner')}</th>
+                <th>{t('colStatus')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -261,7 +265,7 @@ function SignaturesTab({ onError }: { onError: (m: string | null) => void }) {
               {sigs.length === 0 && (
                 <tr>
                   <td colSpan={4} className="muted">
-                    No signature requests.
+                    {t('noSignatureRequests')}
                   </td>
                 </tr>
               )}
@@ -281,10 +285,10 @@ function SignaturesTab({ onError }: { onError: (m: string | null) => void }) {
                     {s.status === 'PENDING' && (
                       <span style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-primary" onClick={() => sign(s.id, 'SIGNED')}>
-                          Sign
+                          {t('signButton')}
                         </button>
                         <button className="btn" onClick={() => sign(s.id, 'DECLINED')}>
-                          Decline
+                          {t('declineButton')}
                         </button>
                       </span>
                     )}
@@ -301,6 +305,7 @@ function SignaturesTab({ onError }: { onError: (m: string | null) => void }) {
 
 function ImportTab({ onError }: { onError: (m: string | null) => void }) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const [entity, setEntity] = useState<'products' | 'patients'>('products');
   const [csv, setCsv] = useState('');
@@ -323,7 +328,7 @@ function ImportTab({ onError }: { onError: (m: string | null) => void }) {
   const run = async () => {
     if (!csv.trim()) return;
     if (needsLocation && !pharmacyId) {
-      onError('Select a location for the patient import.');
+      onError(t('selectLocationForPatientImport'));
       return;
     }
     setBusy(true);
@@ -344,20 +349,20 @@ function ImportTab({ onError }: { onError: (m: string | null) => void }) {
 
   return (
     <section className="panel">
-      <h2>Bulk import from CSV</h2>
+      <h2>{t('bulkImportHeading')}</h2>
       <div className="form-row">
         <label className="field">
-          Entity
+          {t('entityLabel')}
           <select value={entity} onChange={(e) => setEntity(e.target.value as 'products' | 'patients')}>
-            <option value="products">Products</option>
-            <option value="patients">Patients</option>
+            <option value="products">{t('productsOption')}</option>
+            <option value="patients">{t('patientsOption')}</option>
           </select>
         </label>
         {needsLocation && (
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
@@ -368,28 +373,28 @@ function ImportTab({ onError }: { onError: (m: string | null) => void }) {
         )}
       </div>
       <label className="field" style={{ marginBottom: 14 }}>
-        CSV (first row = headers)
+        {t('csvHeadersLabel')}
         <textarea className="mono" value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={placeholder} rows={8} />
       </label>
       <button className="btn btn-primary" onClick={run} disabled={busy || !csv.trim()}>
-        {busy ? 'Importing…' : 'Import'}
+        {busy ? t('importingEllipsis') : t('importButton')}
       </button>
 
       {result && (
         <div style={{ marginTop: 20 }}>
           <div className="stat-grid">
             <div className="stat-card">
-              <div className="stat-label">Rows</div>
+              <div className="stat-label">{t('statRows')}</div>
               <div className="stat-value">{result.total}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Created</div>
+              <div className="stat-label">{t('statCreatedCount')}</div>
               <div className="stat-value" style={{ color: 'var(--ok)' }}>
                 {result.created}
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Failed</div>
+              <div className="stat-label">{t('statFailed')}</div>
               <div className="stat-value" style={{ color: result.failed > 0 ? 'var(--danger)' : undefined }}>
                 {result.failed}
               </div>
@@ -399,8 +404,8 @@ function ImportTab({ onError }: { onError: (m: string | null) => void }) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Row</th>
-                  <th>Error</th>
+                  <th>{t('colRow')}</th>
+                  <th>{t('colError')}</th>
                 </tr>
               </thead>
               <tbody>

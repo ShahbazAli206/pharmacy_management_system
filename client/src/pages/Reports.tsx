@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useI18n } from '../lib/i18n/I18nContext';
+import type { TranslationKey } from '../lib/i18n/translations';
 import type { ReportResult, SavedReportRow } from '../lib/types';
 
 const money = (cents: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(cents / 100);
 
-const REPORT_TYPES: Array<{ value: string; label: string }> = [
-  { value: 'SALES_BY_DAY', label: 'Sales by day' },
-  { value: 'EXPENSES_BY_CATEGORY', label: 'Expenses by category' },
-  { value: 'RX_VOLUME', label: 'Prescription volume' },
-  { value: 'SALES_FORECAST', label: 'Sales forecast' },
+const REPORT_TYPES: Array<{ value: string; labelKey: TranslationKey }> = [
+  { value: 'SALES_BY_DAY', labelKey: 'reportTypeSalesByDay' },
+  { value: 'EXPENSES_BY_CATEGORY', labelKey: 'reportTypeExpensesByCategory' },
+  { value: 'RX_VOLUME', labelKey: 'reportTypeRxVolume' },
+  { value: 'SALES_FORECAST', labelKey: 'reportTypeSalesForecast' },
 ];
 
 /** Horizontal bar cell, width normalized to the series max. */
@@ -22,6 +24,7 @@ function Bar({ value, max }: { value: number; max: number }) {
 }
 
 export function Reports() {
+  const { t } = useI18n();
   const [type, setType] = useState('SALES_BY_DAY');
   const [result, setResult] = useState<ReportResult | null>(null);
   const [saved, setSaved] = useState<SavedReportRow[]>([]);
@@ -69,27 +72,27 @@ export function Reports() {
   return (
     <div>
       <header className="page-head">
-        <h1>Reports &amp; Analytics</h1>
-        <p className="muted">Sales, expenses, prescription volume, and forecasting</p>
+        <h1>{t('reportsHeading')}</h1>
+        <p className="muted">{t('reportsSubtitle')}</p>
       </header>
 
       {error && <div className="alert alert-error">{error}</div>}
 
       <section className="panel">
-        <h2>Run a report</h2>
+        <h2>{t('runReportHeading')}</h2>
         <div className="form-row">
           <label className="field">
-            Report type
+            {t('reportTypeLabel')}
             <select value={type} onChange={(e) => setType(e.target.value)}>
               {REPORT_TYPES.map((r) => (
                 <option key={r.value} value={r.value}>
-                  {r.label}
+                  {t(r.labelKey)}
                 </option>
               ))}
             </select>
           </label>
           <button className="btn btn-primary" onClick={() => run(type)} disabled={busy}>
-            {busy ? 'Running…' : 'Run report'}
+            {busy ? t('runningEllipsis') : t('runReportButton')}
           </button>
         </div>
 
@@ -97,8 +100,8 @@ export function Reports() {
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th className="num">{isCurrency ? 'Revenue' : 'Count'}</th>
+                <th>{t('colDate')}</th>
+                <th className="num">{isCurrency ? t('colRevenue') : t('colCount')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -106,7 +109,7 @@ export function Reports() {
               {result.series.length === 0 && (
                 <tr>
                   <td colSpan={3} className="muted">
-                    No data in this period.
+                    {t('noDataInPeriod')}
                   </td>
                 </tr>
               )}
@@ -130,15 +133,15 @@ export function Reports() {
           <table className="table">
             <thead>
               <tr>
-                <th>Category</th>
-                <th className="num">Amount</th>
+                <th>{t('colCategory')}</th>
+                <th className="num">{t('colAmount')}</th>
               </tr>
             </thead>
             <tbody>
               {Object.keys(result.data).length === 0 && (
                 <tr>
                   <td colSpan={2} className="muted">
-                    No expenses in this period.
+                    {t('noExpensesInPeriod')}
                   </td>
                 </tr>
               )}
@@ -154,13 +157,13 @@ export function Reports() {
 
         {result && result.forecast && (
           <>
-            <p className="muted">Method: {result.method}</p>
+            <p className="muted">{t('methodLabel', { method: result.method })}</p>
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th className="num">Projected revenue</th>
+                    <th>{t('colDate')}</th>
+                    <th className="num">{t('colProjectedRevenue')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -168,7 +171,7 @@ export function Reports() {
                   {result.forecast.length === 0 && (
                     <tr>
                       <td colSpan={3} className="muted">
-                        Not enough history to forecast.
+                        {t('notEnoughHistoryToForecast')}
                       </td>
                     </tr>
                   )}
@@ -192,23 +195,23 @@ export function Reports() {
       </section>
 
       <section className="panel">
-        <h2>Saved reports</h2>
+        <h2>{t('savedReportsHeading')}</h2>
         <div className="form-row">
           <label className="field">
-            Save current type as
-            <input value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="Monthly sales" />
+            {t('saveCurrentTypeAsLabel')}
+            <input value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder={t('savedReportNamePlaceholder')} />
           </label>
           <button className="btn" onClick={save} disabled={!saveName.trim()}>
-            Save
+            {t('saveButton')}
           </button>
         </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Created</th>
+                <th>{t('colName')}</th>
+                <th>{t('colType')}</th>
+                <th>{t('colCreated')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -216,7 +219,7 @@ export function Reports() {
               {saved.length === 0 && (
                 <tr>
                   <td colSpan={4} className="muted">
-                    No saved reports.
+                    {t('noSavedReports')}
                   </td>
                 </tr>
               )}
@@ -227,7 +230,7 @@ export function Reports() {
                   <td>{new Date(r.createdAt).toLocaleDateString('en-CA')}</td>
                   <td>
                     <button className="btn" onClick={() => { setType(r.type); void run(r.type); }}>
-                      Run
+                      {t('runButton')}
                     </button>
                   </td>
                 </tr>

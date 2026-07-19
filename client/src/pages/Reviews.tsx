@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
+import type { TranslationKey } from '../lib/i18n/translations';
 
 type Rating = 'NEEDS_IMPROVEMENT' | 'MEETS_EXPECTATIONS' | 'EXCEEDS_EXPECTATIONS' | 'OUTSTANDING';
 type Status = 'DRAFT' | 'SUBMITTED' | 'ACKNOWLEDGED';
@@ -37,11 +39,11 @@ interface TeamReview extends MyReview {
   pharmacy: { code: string; name: string };
 }
 
-const RATING_LABELS: Record<Rating, string> = {
-  NEEDS_IMPROVEMENT: 'Needs improvement',
-  MEETS_EXPECTATIONS: 'Meets expectations',
-  EXCEEDS_EXPECTATIONS: 'Exceeds expectations',
-  OUTSTANDING: 'Outstanding',
+const RATING_LABEL_KEYS: Record<Rating, TranslationKey> = {
+  NEEDS_IMPROVEMENT: 'ratingNeedsImprovement',
+  MEETS_EXPECTATIONS: 'ratingMeetsExpectations',
+  EXCEEDS_EXPECTATIONS: 'ratingExceedsExpectations',
+  OUTSTANDING: 'ratingOutstanding',
 };
 
 const RATING_BADGE: Record<Rating, string> = {
@@ -65,6 +67,7 @@ const toLocalDate = (d: Date) => {
 
 export function Reviews() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const canManage = can('review:manage');
   const canViewTeam = can('review:read');
@@ -112,7 +115,13 @@ export function Reviews() {
       await api(`/reviews/${id}/${action}`, { method: 'POST', body: JSON.stringify({}) });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : `Failed to ${action} review`);
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : action === 'submit'
+            ? t('failedToSubmitReview')
+            : t('failedToAcknowledgeReview'),
+      );
     } finally {
       setBusyId(null);
     }
@@ -121,8 +130,8 @@ export function Reviews() {
   return (
     <div>
       <header className="page-head">
-        <h1>Performance Reviews</h1>
-        <p className="muted">Draft, submit, and acknowledge staff performance reviews</p>
+        <h1>{t('reviewsHeading')}</h1>
+        <p className="muted">{t('reviewsSubtitle')}</p>
       </header>
 
       {notice && (
@@ -147,15 +156,15 @@ export function Reviews() {
       )}
 
       <section className="panel">
-        <h2>My reviews</h2>
+        <h2>{t('myReviewsHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Period</th>
-                <th>Rating</th>
-                <th>Reviewer</th>
-                <th>Status</th>
+                <th>{t('colPeriod')}</th>
+                <th>{t('colRating')}</th>
+                <th>{t('colReviewer')}</th>
+                <th>{t('colStatus')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -163,7 +172,7 @@ export function Reviews() {
               {(!mine || mine.length === 0) && (
                 <tr>
                   <td colSpan={5} className="muted">
-                    {mine ? 'No reviews yet.' : 'Loading…'}
+                    {mine ? t('noReviewsYet') : t('loading')}
                   </td>
                 </tr>
               )}
@@ -173,7 +182,7 @@ export function Reviews() {
                     {fmt(r.periodStart)} – {fmt(r.periodEnd)}
                   </td>
                   <td>
-                    <span className={`badge ${RATING_BADGE[r.rating]}`}>{RATING_LABELS[r.rating]}</span>
+                    <span className={`badge ${RATING_BADGE[r.rating]}`}>{t(RATING_LABEL_KEYS[r.rating])}</span>
                   </td>
                   <td>
                     {r.reviewer.firstName} {r.reviewer.lastName}
@@ -188,7 +197,7 @@ export function Reviews() {
                         disabled={busyId === r.id}
                         onClick={() => act(r.id, 'acknowledge')}
                       >
-                        Acknowledge
+                        {t('acknowledgeButton')}
                       </button>
                     )}
                   </td>
@@ -202,10 +211,10 @@ export function Reviews() {
       {canViewTeam && (
         <section className="panel">
           <div className="page-head row">
-            <h2 style={{ margin: 0 }}>Team reviews</h2>
+            <h2 style={{ margin: 0 }}>{t('teamReviewsHeading')}</h2>
             {isOwner && (
               <select value={filterLoc} onChange={(e) => setFilterLoc(e.target.value)} className="select">
-                <option value="">All locations</option>
+                <option value="">{t('allLocationsLabel')}</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -219,10 +228,10 @@ export function Reviews() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Staff</th>
-                  <th>Period</th>
-                  <th>Rating</th>
-                  <th>Status</th>
+                  <th>{t('colStaff')}</th>
+                  <th>{t('colPeriod')}</th>
+                  <th>{t('colRating')}</th>
+                  <th>{t('colStatus')}</th>
                   {canManage && <th></th>}
                 </tr>
               </thead>
@@ -230,14 +239,14 @@ export function Reviews() {
                 {!rows && (
                   <tr>
                     <td colSpan={canManage ? 5 : 4} className="muted">
-                      Loading…
+                      {t('loading')}
                     </td>
                   </tr>
                 )}
                 {rows && rows.length === 0 && (
                   <tr>
                     <td colSpan={canManage ? 5 : 4} className="muted">
-                      No reviews found.
+                      {t('noReviewsFound')}
                     </td>
                   </tr>
                 )}
@@ -250,7 +259,7 @@ export function Reviews() {
                       {fmt(r.periodStart)} – {fmt(r.periodEnd)}
                     </td>
                     <td>
-                      <span className={`badge ${RATING_BADGE[r.rating]}`}>{RATING_LABELS[r.rating]}</span>
+                      <span className={`badge ${RATING_BADGE[r.rating]}`}>{t(RATING_LABEL_KEYS[r.rating])}</span>
                     </td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[r.status]}`}>{r.status}</span>
@@ -263,7 +272,7 @@ export function Reviews() {
                             disabled={busyId === r.id}
                             onClick={() => act(r.id, 'submit')}
                           >
-                            Submit
+                            {t('submitButton')}
                           </button>
                         )}
                       </td>
@@ -294,6 +303,7 @@ function DraftReview({
   onCreated: (msg: string) => void;
   onError: (m: string | null) => void;
 }) {
+  const { t } = useI18n();
   const now = new Date();
   const defaultStart = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
 
@@ -334,9 +344,9 @@ function DraftReview({
       setAreasForImprovement('');
       setGoals('');
       setComments('');
-      onCreated('Review drafted. Submit it when ready for the employee to see.');
+      onCreated(t('reviewDraftedNotice'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to draft review');
+      onError(e instanceof ApiError ? e.message : t('failedToDraftReview'));
     } finally {
       setBusy(false);
     }
@@ -344,13 +354,13 @@ function DraftReview({
 
   return (
     <section className="panel">
-      <h2>Draft a review</h2>
+      <h2>{t('draftReviewHeading')}</h2>
       <div className="form-grid">
         {needsLocation && (
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.code})
@@ -360,9 +370,9 @@ function DraftReview({
           </label>
         )}
         <label className="field">
-          Staff member
+          {t('staffMemberLabel')}
           <select value={userId} onChange={(e) => setUserId(e.target.value)}>
-            <option value="">Select staff…</option>
+            <option value="">{t('selectStaffPlaceholder')}</option>
             {staff.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.lastName}, {s.firstName}
@@ -371,41 +381,41 @@ function DraftReview({
           </select>
         </label>
         <label className="field">
-          Period start
+          {t('periodStartLabel')}
           <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
         </label>
         <label className="field">
-          Period end
+          {t('periodEndLabel')}
           <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
         </label>
         <label className="field">
-          Rating
+          {t('ratingLabel')}
           <select value={rating} onChange={(e) => setRating(e.target.value as Rating)}>
-            {(Object.keys(RATING_LABELS) as Rating[]).map((r) => (
+            {(Object.keys(RATING_LABEL_KEYS) as Rating[]).map((r) => (
               <option key={r} value={r}>
-                {RATING_LABELS[r]}
+                {t(RATING_LABEL_KEYS[r])}
               </option>
             ))}
           </select>
         </label>
         <label className="field" style={{ gridColumn: '1 / -1' }}>
-          Strengths (optional)
+          {t('strengthsOptionalLabel')}
           <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={2} />
         </label>
         <label className="field" style={{ gridColumn: '1 / -1' }}>
-          Areas for improvement (optional)
+          {t('areasForImprovementOptionalLabel')}
           <textarea value={areasForImprovement} onChange={(e) => setAreasForImprovement(e.target.value)} rows={2} />
         </label>
         <label className="field" style={{ gridColumn: '1 / -1' }}>
-          Goals (optional)
+          {t('goalsOptionalLabel')}
           <textarea value={goals} onChange={(e) => setGoals(e.target.value)} rows={2} />
         </label>
         <label className="field" style={{ gridColumn: '1 / -1' }}>
-          Comments (optional)
+          {t('commentsOptionalLabel')}
           <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2} />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
-          {busy ? 'Saving…' : 'Save draft'}
+          {busy ? t('saving') : t('saveDraftButton')}
         </button>
       </div>
     </section>
