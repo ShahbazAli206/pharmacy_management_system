@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (security audit + fine-grained compliance escalation shipped)
+**Last updated:** 2026-07-19 (QR code generator shipped)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,18 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 8) — QR code generator
+- **QR codes** (last item off the "smaller roadmapped items" list besides i18n/backup-UI/
+  custom-fields/keyboard-shortcuts): added the small, dependency-free `qrcode-generator`
+  package rather than hand-rolling QR encoding — QR needs real Reed-Solomon error
+  correction and mask-pattern selection (unlike Code39's simple bar-width scheme), and a
+  subtly-wrong implementation would produce codes that look right but don't scan, with no
+  way to catch that without a physical/decoder test. `GET /admin/qrcode` renders the
+  library's module matrix to our own SVG (same approach as the existing barcode renderer).
+  Verified structurally — valid module count, all three finder patterns byte-for-byte
+  correct per the QR spec — plus a live API smoke test. Admin page's barcode tool gained a
+  Code39/QR format toggle. 3 new unit tests (38/38 unit tests passing).
 
 ### Shipped this session (2026-07-19, part 7) — security audit + fine-grained compliance escalation
 - **Internal security review** (Phase 6 hardening item — precedes a real external pentest, not
@@ -198,13 +210,14 @@ for location-scoped writes (`76bbea3`).
 - [x] **HR — performance reviews DONE** (`PerformanceReview` model + migration, `/reviews`
   create/mine/list/update/submit/acknowledge, Performance Reviews page). **HR module (spec
   §11) is now fully built.**
-- [x] **Financial — AP aging DONE** (`/finance/ap-aging` + Finance panel). Still left:
-  cash-flow forecast, budget variance, PDF/QuickBooks export.
+- [x] **Financial — AP aging DONE** (`/finance/ap-aging` + Finance panel). **Cash-flow
+  forecast + budget variance DONE this session.** Still left: PDF/QuickBooks export.
 
 ### 6. Smaller roadmapped items
 - [x] Dark mode / theming — **done this session**
+- [x] Fine-grained "2h-after-due" overdue escalation — **done this session**
+- [x] QR codes — **done this session**
 - [ ] i18n · backup-restore UI · custom fields · keyboard shortcuts
-- [ ] QR codes (Code39 built) · fine-grained "2h-after-due" overdue escalation (needs per-slot due times)
 
 ---
 

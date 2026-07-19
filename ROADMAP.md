@@ -206,11 +206,18 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Role simulator (effective permissions per role, owner-only).
 - [x] Activity timeline (per-entity, from immutable audit log).
 - [x] Code39 barcode SVG generator (labels) — dependency-free, tested.
+- [x] **QR code SVG generator** — `GET /admin/qrcode`, `Admin` page format toggle
+  (Code39/QR) alongside the existing barcode tool. Uses the small, dependency-free
+  `qrcode-generator` library (renders our own SVG from its module matrix) rather than
+  hand-rolling QR's Reed-Solomon error correction, which isn't safe to implement without a
+  way to verify the output actually scans. Verified structurally (valid module count, all
+  three finder patterns byte-for-byte correct per spec) plus a live API smoke test; 3 new
+  unit tests.
 
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
-- Bull/Redis job queue; WebRTC/HLS streaming; QR (vs Code39); i18n/theme manager;
+- Bull/Redis job queue; WebRTC/HLS streaming; i18n/theme manager;
   backup/restore dashboard UI; custom-fields; keyboard shortcuts.
 
 ---

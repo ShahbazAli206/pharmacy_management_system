@@ -8,6 +8,7 @@ import { PERMISSIONS } from '../../constants/permissions';
 import { ROLE_PERMISSIONS } from '../../constants/permissions';
 import { asyncHandler, badRequest, unauthorized } from '../../utils/httpError';
 import { code39Svg } from '../../utils/barcode';
+import { qrCodeSvg } from '../../utils/qrcode';
 
 const router = Router();
 router.use(authenticate);
@@ -69,6 +70,20 @@ router.get(
     const { value } = z.object({ value: z.string().min(1).max(40) }).parse(req.query);
     try {
       const svg = code39Svg(value);
+      res.header('Content-Type', 'image/svg+xml').send(svg);
+    } catch (e) {
+      throw badRequest((e as Error).message);
+    }
+  }),
+);
+
+// QR code SVG — higher data density than Code39 (e.g. a full URL or JSON payload).
+router.get(
+  '/qrcode',
+  asyncHandler(async (req, res) => {
+    const { value } = z.object({ value: z.string().min(1).max(1000) }).parse(req.query);
+    try {
+      const svg = qrCodeSvg(value);
       res.header('Content-Type', 'image/svg+xml').send(svg);
     } catch (e) {
       throw badRequest((e as Error).message);

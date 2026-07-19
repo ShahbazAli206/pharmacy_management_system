@@ -251,6 +251,7 @@ function ActivityTimeline() {
 }
 
 function BarcodeTool() {
+  const [format, setFormat] = useState<'code39' | 'qr'>('code39');
   const [value, setValue] = useState('');
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -260,10 +261,15 @@ function BarcodeTool() {
     setError(null);
     setSvg(null);
     try {
-      const res = await fetch(`${API_URL}/admin/barcode?value=${encodeURIComponent(value.trim())}`, {
+      const endpoint = format === 'qr' ? 'qrcode' : 'barcode';
+      const res = await fetch(`${API_URL}/admin/${endpoint}?value=${encodeURIComponent(value.trim())}`, {
         headers: { Authorization: `Bearer ${tokenStore.access}` },
       });
-      if (!res.ok) throw new Error('Could not generate barcode (Code39 supports A-Z, 0-9 and - . $ / + %)');
+      if (!res.ok) {
+        throw new Error(
+          format === 'qr' ? 'Could not generate QR code' : 'Could not generate barcode (Code39 supports A-Z, 0-9 and - . $ / + %)',
+        );
+      }
       setSvg(await res.text());
     } catch (e) {
       setError((e as Error).message);
@@ -272,14 +278,33 @@ function BarcodeTool() {
 
   return (
     <section className="panel">
-      <h2>Barcode labels</h2>
+      <h2>Barcode &amp; QR labels</h2>
       <p className="muted" style={{ marginBottom: 12 }}>
-        Generate a Code39 barcode (for a DIN or shelf label).
+        Generate a label code for a DIN or shelf/patient record. QR holds far more data (e.g. a
+        full URL) than Code39.
       </p>
       <div className="form-row">
         <label className="field">
+          Format
+          <select
+            value={format}
+            onChange={(e) => {
+              setFormat(e.target.value as 'code39' | 'qr');
+              setSvg(null);
+              setError(null);
+            }}
+          >
+            <option value="code39">Code39 barcode</option>
+            <option value="qr">QR code</option>
+          </select>
+        </label>
+        <label className="field">
           Value
-          <input value={value} onChange={(e) => setValue(e.target.value.toUpperCase())} placeholder="02240000" />
+          <input
+            value={value}
+            onChange={(e) => setValue(format === 'code39' ? e.target.value.toUpperCase() : e.target.value)}
+            placeholder="02240000"
+          />
         </label>
         <button className="btn btn-primary" onClick={generate} disabled={!value.trim()}>
           Generate
