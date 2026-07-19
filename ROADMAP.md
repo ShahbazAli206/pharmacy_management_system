@@ -96,7 +96,14 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Immutable audit-log viewer (owner: all locations + filter; partner: own location only).
 - [x] Client pages: Compliance (checklist/alerts/score/licenses), Audit Log, **Narcotics register** (controlled-substance search, running-balance ledger, record txn/count, discrepancy resolve/unlock), and **Recalls** (recall list + ingest, quarantine clear/destroy workflow).
 - [~] Recall feed is manual ingest; real MedEffect RSS/API poll (scheduled job) still to wire.
-- [ ] Fine-grained "overdue 2h after due-time" escalation (needs per-slot due times; currently end-of-day).
+- [x] **Fine-grained "overdue 2h after due-time" escalation.** New `dueAt` timestamp column on
+  `ComplianceRecord` (migration `compliance_due_at`, with a data backfill for existing rows),
+  derived per-slot at generation time (single-occurrence tasks 18:00; two-a-day: morning
+  10:00 / closing 20:00). Escalation now fires 2 hours past the exact due time instead of the
+  end-of-day boundary (falls back to the old day-boundary rule for any pre-migration record
+  that predates `dueAt`). Verified live: generated today's checklist, ran the escalation sweep,
+  confirmed only tasks whose due time had passed by 2+ hours flipped to OVERDUE while others
+  stayed PENDING.
 
 Legend: [x] done · [~] partial · [ ] not started
 

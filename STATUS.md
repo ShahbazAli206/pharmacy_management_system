@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (financial extras shipped — cash-flow forecast + budget variance)
+**Last updated:** 2026-07-19 (security audit + fine-grained compliance escalation shipped)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,32 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 7) — security audit + fine-grained compliance escalation
+- **Internal security review** (Phase 6 hardening item — precedes a real external pentest, not
+  a replacement for one): a full-codebase audit across authz, injection, IDOR, secrets/crypto,
+  file handling, and auth edge cases found **no Critical/High issues**. Two Low findings, both
+  fixed same session:
+  - `transfers.service.ts` approve/reject/cancel never checked the fetched transfer's
+    from/to-location against the caller — harmless today only because those routes are
+    gated to owner-only `PHARMACY_MANAGE`, but a latent cross-location IDOR if that
+    permission is ever also granted to a location role. Added a defensive
+    `assertTransferAccess` check (must belong to fromPharmacyId or toPharmacyId).
+  - `/admin/timeline` required only authentication, not an audit-read permission — any
+    authenticated role (e.g. a cashier) could query audit-log metadata for entities they
+    have no read permission on (e.g. PerformanceReview), even though it was already
+    location-scoped. Now gated behind `audit:read:all`/`audit:read:location`. Verified live
+    (cashier now 403s).
+  - Everything else checked out: RLS/location-scoping consistent across every module, no raw
+    SQL string interpolation, no `Math.random` in any token path, mass-assignment guarded
+    (`pharmacyId` on patient update never trusts the client), MFA/password-reset/refresh-token
+    flows correct.
+- **Fine-grained compliance escalation** (last Phase 3 gap): `ComplianceRecord.dueAt` column
+  (migration `compliance_due_at`, backfilled for existing rows) replaces the end-of-day
+  overdue boundary with a real 2-hours-past-due-time rule. Verified live: escalation sweep
+  correctly flips only genuinely-2h-overdue tasks, leaving same-day-but-not-yet-due tasks
+  PENDING.
+- 35 unit + 35 integration tests still pass (70/70) after all of the above.
 
 ### Shipped this session (2026-07-19, part 6) — financial extras (cash-flow forecast + budget variance), API-verified
 - **Budget variance report & cash-flow forecast** (last two items in the Phase 4 financials
@@ -132,7 +158,10 @@ for location-scoped writes (`76bbea3`).
 ### 1. Phase 6 — QA & Hardening / Go-Live (the main remaining work)
 - [x] **Integration tests (HTTP-level) for auth/RBAC/scoping + core workflow — DONE.** 35 supertest tests drive the real app against the live DB with RLS active (`cd server && npm run test:integration`). Covers login/refresh-rotation/logout/`/me`, owner-only 403-vs-200 RBAC, partner location isolation (RLS-invisible → 404), and a patient→allergy→dashboard→inventory→audit workflow. Unit tests remain `npm test` (35, DB-independent); `npm run test:all` runs both.
 - [x] **Load test — 200 concurrent users — DONE.** autocannon harness `cd server && npm run loadtest` (needs DB up). Boots the app in-process with rate limiting disabled, drives 200 concurrent connections over a real read mix, and gates on p99 < 3s + zero errors. Local baseline: ~215 req/s, p99 ~1.9s, 0 errors/non-2xx. Rate limits are now env-tunable (`RATE_LIMIT_MAX`/`AUTH_RATE_LIMIT_MAX`, 0 = disabled).
-- [ ] Penetration testing / security review
+- [~] **Internal security code review — DONE** (authz/injection/IDOR/secrets/crypto/auth
+  sweep; no Critical/High findings, two Lows found and fixed same session — see "Shipped").
+  A real external penetration test is still needed before production; an internal review is
+  not a substitute.
 - [ ] Pharmacist UAT, training, phased rollout, DR drills
 
 ### 2. Real external integrations (currently pluggable stubs — need creds/services)

@@ -19,6 +19,19 @@ function atMidnight(d: Date): Date {
 }
 
 /**
+ * Exact due timestamp for a slot, used by the fine-grained overdue escalation.
+ * Single-occurrence tasks are due end-of-day (18:00); two-a-day tasks: morning
+ * slot 10:00, closing slot 20:00. Mirrors the migration backfill convention.
+ */
+function dueAtFor(due: Date, slot: number, timesPerDay: number): Date {
+  const d = new Date(due);
+  if (timesPerDay <= 1) d.setHours(18, 0, 0, 0);
+  else if (slot === 0) d.setHours(10, 0, 0, 0);
+  else d.setHours(20, 0, 0, 0);
+  return d;
+}
+
+/**
  * Generate the checklist instances due on `date` for a pharmacy. Idempotent:
  * the unique (pharmacy, template, dueDate, slot) constraint means re-running
  * for the same day creates nothing new. Frequency rules:
@@ -53,7 +66,7 @@ export async function generateChecklist(auth: AuthContext, requestedPharmacyId?:
       const label = t.timesPerDay > 1 ? `${t.title} (${slot === 0 ? 'morning' : 'closing'})` : t.title;
       try {
         await prisma.complianceRecord.create({
-          data: { pharmacyId, templateId: t.id, dueDate: due, slot, label },
+          data: { pharmacyId, templateId: t.id, dueDate: due, dueAt: dueAtFor(due, slot, t.timesPerDay), slot, label },
         });
         created++;
       } catch {
@@ -103,16 +116,21 @@ export async function completeTask(
 }
 
 /**
- * Escalation sweep: mark past-due PENDING items OVERDUE and raise an alert.
- * (Spec's fine-grained "2 hours after due time" needs per-slot due times; this
- * uses end-of-day as the due boundary — a documented simplification.)
+ * Escalation sweep: mark PENDING items OVERDUE once 2 hours past their due
+ * timestamp and raise an alert. Records predating the `dueAt` column (null)
+ * fall back to the original end-of-day boundary.
  */
 export async function runEscalation(auth: AuthContext, requestedPharmacyId?: string, now = new Date()) {
   const pharmacyId = scopeFor(auth, requestedPharmacyId);
   const today = atMidnight(now);
+  const escalationThreshold = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
   const overdue = await prisma.complianceRecord.findMany({
-    where: { pharmacyId, status: 'PENDING', dueDate: { lt: today } },
+    where: {
+      pharmacyId,
+      status: 'PENDING',
+      OR: [{ dueAt: { lte: escalationThreshold } }, { dueAt: null, dueDate: { lt: today } }],
+    },
     include: { template: true },
   });
 

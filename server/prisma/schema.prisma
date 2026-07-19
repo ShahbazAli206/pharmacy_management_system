@@ -622,6 +622,12 @@ model ComplianceRecord {
   template          ComplianceTaskTemplate @relation(fields: [templateId], references: [id])
   dueDate           DateTime // date the task is due (midnight-anchored)
   slot              Int                    @default(0) // e.g. 0 = morning, 1 = closing
+  // Exact due timestamp within dueDate, derived from slot at generation time.
+  // Enables the fine-grained "overdue N hours after due time" escalation
+  // instead of an end-of-day boundary. Nullable for rows created before this
+  // column existed (backfilled by migration); escalation falls back to the
+  // day boundary when null.
+  dueAt             DateTime?
   label             String
   status            ComplianceStatus       @default(PENDING)
   completedByUserId String?

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { RoleName } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { authenticate } from '../../middleware/auth';
-import { requirePermission, isOwner } from '../../middleware/rbac';
+import { requirePermission, requireAnyPermission, isOwner } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../constants/permissions';
 import { ROLE_PERMISSIONS } from '../../constants/permissions';
 import { asyncHandler, badRequest, unauthorized } from '../../utils/httpError';
@@ -34,10 +34,14 @@ router.get(
 
 /**
  * Activity timeline for a specific entity, drawn from the immutable audit log.
- * Location-scoped for non-owners.
+ * Location-scoped for non-owners. Gated behind the same audit-read permissions
+ * as the audit-log viewer itself — otherwise any authenticated role (e.g. a
+ * cashier) could query audit metadata for entities they have no read access
+ * to (e.g. PerformanceReview), even though the query is already location-scoped.
  */
 router.get(
   '/timeline',
+  requireAnyPermission(PERMISSIONS.AUDIT_READ_ALL, PERMISSIONS.AUDIT_READ_LOCATION),
   asyncHandler(async (req, res) => {
     if (!req.auth) throw unauthorized();
     const { entity, entityId } = z

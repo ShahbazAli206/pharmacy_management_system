@@ -6,6 +6,20 @@ import { badRequest, forbidden, notFound } from '../../utils/httpError';
 import { decrementStockFEFO } from '../inventory/inventory.service';
 import { postNarcoticTxn } from '../narcotics/narcotics.service';
 
+/**
+ * Defense-in-depth: transfers span two locations, so plain assertLocationAccess
+ * (single-location equality) doesn't fit. Currently approve/reject/cancel are
+ * gated at the route layer to PHARMACY_MANAGE (owner-only), but this stops the
+ * decision from becoming a cross-location IDOR if that permission is ever also
+ * granted to a location-scoped role.
+ */
+function assertTransferAccess(auth: AuthContext, transfer: { fromPharmacyId: string; toPharmacyId: string }) {
+  if (isOwner(auth)) return;
+  if (auth.locationId !== transfer.fromPharmacyId && auth.locationId !== transfer.toPharmacyId) {
+    throw forbidden('Cross-location access denied');
+  }
+}
+
 const includeShape = {
   product: { select: { id: true, name: true, din: true, strength: true, isControlled: true } },
   fromPharmacy: { select: { id: true, name: true, code: true } },
@@ -85,6 +99,7 @@ export async function approveTransfer(auth: AuthContext, id: string) {
     include: { product: true },
   });
   if (!transfer) throw notFound('Transfer not found');
+  assertTransferAccess(auth, transfer);
   if (transfer.status !== 'REQUESTED') throw badRequest(`Transfer is already ${transfer.status}`);
 
   return prisma.$transaction(async (tx) => {
@@ -146,6 +161,7 @@ export async function approveTransfer(auth: AuthContext, id: string) {
 export async function rejectTransfer(auth: AuthContext, id: string) {
   const transfer = await prisma.stockTransfer.findUnique({ where: { id } });
   if (!transfer) throw notFound('Transfer not found');
+  assertTransferAccess(auth, transfer);
   if (transfer.status !== 'REQUESTED') throw badRequest(`Transfer is already ${transfer.status}`);
   return prisma.stockTransfer.update({
     where: { id },
@@ -158,6 +174,7 @@ export async function rejectTransfer(auth: AuthContext, id: string) {
 export async function cancelTransfer(auth: AuthContext, id: string) {
   const transfer = await prisma.stockTransfer.findUnique({ where: { id } });
   if (!transfer) throw notFound('Transfer not found');
+  assertTransferAccess(auth, transfer);
   if (transfer.status !== 'REQUESTED') throw badRequest(`Transfer is already ${transfer.status}`);
   if (!isOwner(auth) && transfer.requestedByUserId !== auth.userId) {
     throw forbidden('Only the requester can cancel this transfer');
