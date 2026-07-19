@@ -18,6 +18,7 @@ import { Attendance } from './pages/Attendance';
 import { Scheduling } from './pages/Scheduling';
 import { Incidents } from './pages/Incidents';
 import { Training } from './pages/Training';
+import { Reviews } from './pages/Reviews';
 import { Recalls } from './pages/Recalls';
 import { Notifications } from './pages/Notifications';
 import { Compliance } from './pages/Compliance';
@@ -272,6 +273,16 @@ export default function App() {
           <ProtectedRoute>
             <Layout>
               <Training />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reviews"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Reviews />
             </Layout>
           </ProtectedRoute>
         }

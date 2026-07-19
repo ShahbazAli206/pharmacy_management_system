@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (HR training/CE tracking shipped)
+**Last updated:** 2026-07-19 (HR performance reviews shipped — HR module complete)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,20 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 5) — HR performance reviews, browser/API verified — HR module complete
+- **New feature — Performance reviews (spec §11 HR follow-on, the last unbuilt HR sub-area):**
+  `PerformanceReview` model + migration (`hr_performance_reviews`), `REVIEW_READ`/
+  `REVIEW_MANAGE` permissions (owner/partner/PIC draft, submit, and view team reviews), new
+  `server/src/modules/reviews` (create/list-mine/list-team/update/submit/acknowledge,
+  location-scoped, audit-logged). Workflow: manager drafts a review (hidden from the employee
+  while DRAFT) → submits it (now visible to the employee) → employee self-service
+  acknowledges → the review locks against further edits. **Client: Performance Reviews page**
+  — draft form, "my reviews" with acknowledge, team reviews table with submit. Verified via
+  live API (full draft→submit→acknowledge→edit-blocked lifecycle, plus RBAC 403s for a
+  non-manager role on both draft and team-list) and in-browser (Playwright: nav link, form,
+  and a real acknowledged review rendering correctly in the team table). 51 permissions now
+  seeded (was 49). **This completes the entire spec §11 HR module.**
 
 ### Shipped this session (2026-07-19, part 4) — HR training/CE tracking, browser/API verified
 - **New feature — Training/CE tracking (spec §11 HR follow-on, last unbuilt slice besides
@@ -135,7 +149,10 @@ for location-scoped writes (`76bbea3`).
 - [x] **HR — incident reports DONE** (`IncidentReport` model + migration, `/incidents`
   file/mine/list/update/resolve/close, Incident Reports page).
 - [x] **HR — training/CE tracking DONE** (`TrainingRecord` model + migration, `/training`
-  log/mine/list/expiring, Training & CE page). Still left: performance reviews (last HR gap).
+  log/mine/list/expiring, Training & CE page).
+- [x] **HR — performance reviews DONE** (`PerformanceReview` model + migration, `/reviews`
+  create/mine/list/update/submit/acknowledge, Performance Reviews page). **HR module (spec
+  §11) is now fully built.**
 - [x] **Financial — AP aging DONE** (`/finance/ap-aging` + Finance panel). Still left:
   cash-flow forecast, budget variance, PDF/QuickBooks export.
 
@@ -192,8 +209,8 @@ Typecheck: `npm run typecheck`.
 The **buildable UI backlog is clear** — every backend module has a client page (see "Shipped
 this session"). Pick one of the remaining directions, in rough priority:
 
-1. **HR module (spec §11)** — attendance, scheduling, incident reports, and training/CE
-   tracking are done. Remaining slice: performance reviews (last HR gap).
+1. **HR module (spec §11) — DONE.** Attendance, scheduling, incident reports, training/CE,
+   and performance reviews are all shipped. No HR gaps remain.
 2. **Financial extras** — cash-flow forecast, budget variance, PDF/QuickBooks export.
 3. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
    insurance / payments) — *blocked on credentials*.

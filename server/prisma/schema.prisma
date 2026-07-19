@@ -123,6 +123,7 @@ model Pharmacy {
   shifts             Shift[]
   incidentReports    IncidentReport[]
   trainingRecords    TrainingRecord[]
+  performanceReviews PerformanceReview[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -165,6 +166,8 @@ model User {
   incidentsResolved    IncidentReport[]   @relation("IncidentResolver")
   trainingRecords      TrainingRecord[]   @relation("TrainingUser")
   trainingRecorded     TrainingRecord[]   @relation("TrainingRecordedBy")
+  reviewsReceived      PerformanceReview[] @relation("ReviewSubject")
+  reviewsConducted     PerformanceReview[] @relation("ReviewReviewer")
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -1228,4 +1231,47 @@ model TrainingRecord {
 
   @@index([userId])
   @@index([pharmacyId, expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// HR — performance reviews. Managers draft a review for a subordinate, submit
+// it (finalizing the content), and the employee self-service acknowledges it
+// (mirrors the e-signature request/sign pattern from Phase 8, without a
+// decline path — reviews are acknowledged, not disputed, in this workflow).
+// ---------------------------------------------------------------------------
+enum PerformanceRating {
+  NEEDS_IMPROVEMENT
+  MEETS_EXPECTATIONS
+  EXCEEDS_EXPECTATIONS
+  OUTSTANDING
+}
+
+enum ReviewStatus {
+  DRAFT
+  SUBMITTED
+  ACKNOWLEDGED
+}
+
+model PerformanceReview {
+  id                  String            @id @default(uuid())
+  userId              String
+  user                User              @relation("ReviewSubject", fields: [userId], references: [id])
+  pharmacyId          String
+  pharmacy            Pharmacy          @relation(fields: [pharmacyId], references: [id])
+  reviewerUserId      String
+  reviewer            User              @relation("ReviewReviewer", fields: [reviewerUserId], references: [id])
+  periodStart         DateTime
+  periodEnd           DateTime
+  rating              PerformanceRating
+  strengths           String?
+  areasForImprovement String?
+  goals               String?
+  comments            String?
+  status              ReviewStatus      @default(DRAFT)
+  acknowledgedAt      DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([pharmacyId, status])
 }

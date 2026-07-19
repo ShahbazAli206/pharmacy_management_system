@@ -91,6 +91,10 @@ export const PERMISSIONS = {
   // HR — training / continuing-education tracking (Phase 12)
   TRAINING_READ: 'training:read',
   TRAINING_MANAGE: 'training:manage',
+
+  // HR — performance reviews (Phase 12)
+  REVIEW_READ: 'review:read',
+  REVIEW_MANAGE: 'review:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -145,6 +149,8 @@ export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   [PERMISSIONS.INCIDENT_MANAGE]: 'Triage, update, and resolve incident reports',
   [PERMISSIONS.TRAINING_READ]: "View the team's training/CE records and expiry warnings",
   [PERMISSIONS.TRAINING_MANAGE]: 'Log and edit training/CE records on behalf of team members',
+  [PERMISSIONS.REVIEW_READ]: "View the team's performance reviews",
+  [PERMISSIONS.REVIEW_MANAGE]: 'Draft, submit, and edit performance reviews for team members',
 };
 
 /**
@@ -200,6 +206,8 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.INCIDENT_MANAGE,
     PERMISSIONS.TRAINING_READ,
     PERMISSIONS.TRAINING_MANAGE,
+    PERMISSIONS.REVIEW_READ,
+    PERMISSIONS.REVIEW_MANAGE,
   ],
   PHARMACIST_IN_CHARGE: [
     PERMISSIONS.DASHBOARD_LOCATION,
@@ -233,6 +241,8 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.INCIDENT_MANAGE,
     PERMISSIONS.TRAINING_READ,
     PERMISSIONS.TRAINING_MANAGE,
+    PERMISSIONS.REVIEW_READ,
+    PERMISSIONS.REVIEW_MANAGE,
   ],
   PHARMACY_TECHNICIAN: [
     PERMISSIONS.DASHBOARD_LOCATION,

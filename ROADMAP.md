@@ -146,7 +146,19 @@ Legend: [x] done · [~] partial · [ ] not started
   (log→mine→team-list→expiring, plus an RBAC guard on logging for an invalid target user) and
   in-browser (Playwright: nav link, form submit, table + expiring panel populate, zero console
   errors from the app's own code).
-- [ ] Performance reviews (last unbuilt HR sub-area).
+- [x] **Performance reviews**: `PerformanceReview` model + migration (`hr_performance_reviews`) —
+  period, rating, strengths/areas-for-improvement/goals/comments, status (DRAFT/SUBMITTED/
+  ACKNOWLEDGED). `REVIEW_READ`/`REVIEW_MANAGE` permissions (owner/partner/PIC draft, submit,
+  and view team reviews); the reviewed employee self-service acknowledges (mirrors the Phase-8
+  e-signature request/sign pattern) — drafts are withheld from the employee's own view until
+  submitted. New `server/src/modules/reviews` (create/list-mine/list-team/update/submit/
+  acknowledge, location-scoped, audit-logged). **Client: Performance Reviews page** — draft
+  form (managers), "my reviews" with an acknowledge action, and a team reviews table with
+  submit. Verified via live API (draft→hidden-from-employee→submit→employee sees it→
+  acknowledge→edit-after-acknowledge blocked, plus an RBAC 403 check for a non-manager role)
+  and in-browser (Playwright/screenshot: nav link, form, team table renders correctly).
+  **This completes the spec §11 HR module** (attendance, scheduling, incident reports,
+  training/CE, performance reviews all shipped).
 
 ## PHASE 6 — QA & Hardening (Months 13–15)  ← IN PROGRESS
 - [x] Automated unit suite (vitest): RBAC guards, JWT, MFA, drug-interaction engine, tax, CSV, barcode — 35 tests passing (`npm test`, DB-independent).
