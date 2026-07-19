@@ -122,6 +122,7 @@ model Pharmacy {
   attendance         Attendance[]
   shifts             Shift[]
   incidentReports    IncidentReport[]
+  trainingRecords    TrainingRecord[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -162,6 +163,8 @@ model User {
   shiftsCreated        Shift[]            @relation("ShiftCreatedBy")
   incidentsReported    IncidentReport[]   @relation("IncidentReporter")
   incidentsResolved    IncidentReport[]   @relation("IncidentResolver")
+  trainingRecords      TrainingRecord[]   @relation("TrainingUser")
+  trainingRecorded     TrainingRecord[]   @relation("TrainingRecordedBy")
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -1189,4 +1192,40 @@ model IncidentReport {
 
   @@index([pharmacyId, status])
   @@index([reportedByUserId])
+}
+
+// ---------------------------------------------------------------------------
+// HR — training / continuing-education tracking. Staff self-log completed
+// courses/certifications; managers can log on behalf of a team member and
+// view location-wide expiring-credential warnings (mirrors the license/permit
+// expiry pattern from Phase 3, but for CE credits rather than practice licenses).
+// ---------------------------------------------------------------------------
+enum TrainingCategory {
+  CONTINUING_EDUCATION
+  CERTIFICATION
+  ORIENTATION
+  SAFETY
+  OTHER
+}
+
+model TrainingRecord {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation("TrainingUser", fields: [userId], references: [id])
+  pharmacyId       String
+  pharmacy         Pharmacy         @relation(fields: [pharmacyId], references: [id])
+  title            String
+  provider         String?
+  category         TrainingCategory @default(CONTINUING_EDUCATION)
+  creditHours      Float?
+  completedAt      DateTime
+  expiresAt        DateTime?
+  notes            String?
+  recordedByUserId String
+  recordedBy       User             @relation("TrainingRecordedBy", fields: [recordedByUserId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([pharmacyId, expiresAt])
 }

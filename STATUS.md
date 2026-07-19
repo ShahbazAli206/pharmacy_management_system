@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (HR incident reports shipped)
+**Last updated:** 2026-07-19 (HR training/CE tracking shipped)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,19 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 4) — HR training/CE tracking, browser/API verified
+- **New feature — Training/CE tracking (spec §11 HR follow-on, last unbuilt slice besides
+  performance reviews):** `TrainingRecord` model + migration (`hr_training_records`),
+  `TRAINING_READ`/`TRAINING_MANAGE` permissions (owner/partner/PIC view team + expiring-soon
+  report; self-logging is open to every role), new `server/src/modules/training`
+  (log/list-mine self-service, manager on-behalf-of logging with a location-membership guard,
+  location-scoped team list, and a 30/60/90-day expiring-credential report reusing the Phase-3
+  license-expiry bucket pattern). **Client: Training & CE page** — log-record form (toggle
+  self vs. on-behalf-of a team member), expiring-soon panel, "my training history", team
+  records table. Verified via live API (log→mine→team-list→expiring, invalid-target-user 400)
+  and in-browser (Playwright: nav link, page renders, form submit updates the table, zero
+  console errors from app code). 49 permissions now seeded (was 47).
 
 ### Shipped this session (2026-07-19, part 3) — HR incident reports, browser/API verified
 - **New feature — Incident reports (spec §11 HR follow-on):** `IncidentReport` model + migration
@@ -120,8 +133,9 @@ for location-scoped writes (`76bbea3`).
 - [x] **HR — shift scheduling DONE** (`Shift` model + migration, `/scheduling` list/create/update/
   publish/cancel + `/me`, Scheduling page).
 - [x] **HR — incident reports DONE** (`IncidentReport` model + migration, `/incidents`
-  file/mine/list/update/resolve/close, Incident Reports page). Still left: training/CE tracking,
-  performance reviews.
+  file/mine/list/update/resolve/close, Incident Reports page).
+- [x] **HR — training/CE tracking DONE** (`TrainingRecord` model + migration, `/training`
+  log/mine/list/expiring, Training & CE page). Still left: performance reviews (last HR gap).
 - [x] **Financial — AP aging DONE** (`/finance/ap-aging` + Finance panel). Still left:
   cash-flow forecast, budget variance, PDF/QuickBooks export.
 
@@ -178,8 +192,8 @@ Typecheck: `npm run typecheck`.
 The **buildable UI backlog is clear** — every backend module has a client page (see "Shipped
 this session"). Pick one of the remaining directions, in rough priority:
 
-1. **HR module (spec §11)** — attendance, scheduling, and incident reports are done. Remaining
-   slice: training/CE tracking, performance reviews.
+1. **HR module (spec §11)** — attendance, scheduling, incident reports, and training/CE
+   tracking are done. Remaining slice: performance reviews (last HR gap).
 2. **Financial extras** — cash-flow forecast, budget variance, PDF/QuickBooks export.
 3. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
    insurance / payments) — *blocked on credentials*.

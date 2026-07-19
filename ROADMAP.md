@@ -135,7 +135,18 @@ Legend: [x] done · [~] partial · [ ] not started
   Reports page** — report form, "my reports", and a manager triage table with resolve/close.
   Verified via live API (file→list→resolve→close) and in-browser (Playwright: nav link, form
   submit, table updates, zero console errors).
-- [ ] Training/CE tracking, performance reviews (still unbuilt HR sub-areas).
+- [x] **Training/CE tracking**: `TrainingRecord` model + migration (`hr_training_records`) —
+  title/provider/category, credit hours, completed/expiry dates. `TRAINING_READ`/`TRAINING_MANAGE`
+  permissions (owner/partner/PIC view team + expiring-soon; every role can self-log). New
+  `server/src/modules/training` (self-service log/list-mine open to any authenticated user;
+  managers can log on behalf of a team member, view the location-wide list, and an
+  expiring-credential report bucketed 30/60/90 days, mirroring the Phase-3 license-expiry
+  pattern). **Client: Training & CE page** — log-record form (self or on-behalf-of), an
+  expiring-soon panel, "my training history", and a team records table. Verified via live API
+  (log→mine→team-list→expiring, plus an RBAC guard on logging for an invalid target user) and
+  in-browser (Playwright: nav link, form submit, table + expiring panel populate, zero console
+  errors from the app's own code).
+- [ ] Performance reviews (last unbuilt HR sub-area).
 
 ## PHASE 6 — QA & Hardening (Months 13–15)  ← IN PROGRESS
 - [x] Automated unit suite (vitest): RBAC guards, JWT, MFA, drug-interaction engine, tax, CSV, barcode — 35 tests passing (`npm test`, DB-independent).

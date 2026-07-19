@@ -17,6 +17,7 @@ import { Staff } from './pages/Staff';
 import { Attendance } from './pages/Attendance';
 import { Scheduling } from './pages/Scheduling';
 import { Incidents } from './pages/Incidents';
+import { Training } from './pages/Training';
 import { Recalls } from './pages/Recalls';
 import { Notifications } from './pages/Notifications';
 import { Compliance } from './pages/Compliance';
@@ -261,6 +262,16 @@ export default function App() {
           <ProtectedRoute>
             <Layout>
               <Incidents />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/training"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Training />
             </Layout>
           </ProtectedRoute>
         }

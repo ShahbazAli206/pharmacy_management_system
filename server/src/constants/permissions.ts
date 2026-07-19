@@ -87,6 +87,10 @@ export const PERMISSIONS = {
   // HR — incident reports (Phase 12)
   INCIDENT_READ: 'incident:read',
   INCIDENT_MANAGE: 'incident:manage',
+
+  // HR — training / continuing-education tracking (Phase 12)
+  TRAINING_READ: 'training:read',
+  TRAINING_MANAGE: 'training:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -139,6 +143,8 @@ export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   [PERMISSIONS.SHIFT_WRITE]: 'Create, edit, and cancel staff shifts',
   [PERMISSIONS.INCIDENT_READ]: "View this location's incident reports",
   [PERMISSIONS.INCIDENT_MANAGE]: 'Triage, update, and resolve incident reports',
+  [PERMISSIONS.TRAINING_READ]: "View the team's training/CE records and expiry warnings",
+  [PERMISSIONS.TRAINING_MANAGE]: 'Log and edit training/CE records on behalf of team members',
 };
 
 /**
@@ -192,6 +198,8 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.SHIFT_WRITE,
     PERMISSIONS.INCIDENT_READ,
     PERMISSIONS.INCIDENT_MANAGE,
+    PERMISSIONS.TRAINING_READ,
+    PERMISSIONS.TRAINING_MANAGE,
   ],
   PHARMACIST_IN_CHARGE: [
     PERMISSIONS.DASHBOARD_LOCATION,
@@ -223,6 +231,8 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.SHIFT_WRITE,
     PERMISSIONS.INCIDENT_READ,
     PERMISSIONS.INCIDENT_MANAGE,
+    PERMISSIONS.TRAINING_READ,
+    PERMISSIONS.TRAINING_MANAGE,
   ],
   PHARMACY_TECHNICIAN: [
     PERMISSIONS.DASHBOARD_LOCATION,
