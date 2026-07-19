@@ -79,6 +79,14 @@ export const PERMISSIONS = {
   // Workflow & admin tooling (Phase 11)
   WORKFLOW_APPROVE: 'workflow:approve',
   ROLE_SIMULATE: 'role:simulate',
+
+  // HR — shift scheduling (Phase 12)
+  SHIFT_READ: 'shift:read',
+  SHIFT_WRITE: 'shift:write',
+
+  // HR — incident reports (Phase 12)
+  INCIDENT_READ: 'incident:read',
+  INCIDENT_MANAGE: 'incident:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -127,6 +135,10 @@ export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   [PERMISSIONS.REPORT_RUN]: 'Run and save reports',
   [PERMISSIONS.WORKFLOW_APPROVE]: 'Approve or reject workflow requests',
   [PERMISSIONS.ROLE_SIMULATE]: 'Simulate role permissions',
+  [PERMISSIONS.SHIFT_READ]: 'View the staff shift schedule',
+  [PERMISSIONS.SHIFT_WRITE]: 'Create, edit, and cancel staff shifts',
+  [PERMISSIONS.INCIDENT_READ]: "View this location's incident reports",
+  [PERMISSIONS.INCIDENT_MANAGE]: 'Triage, update, and resolve incident reports',
 };
 
 /**
@@ -176,6 +188,10 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.DATA_IMPORT,
     PERMISSIONS.REPORT_RUN,
     PERMISSIONS.WORKFLOW_APPROVE,
+    PERMISSIONS.SHIFT_READ,
+    PERMISSIONS.SHIFT_WRITE,
+    PERMISSIONS.INCIDENT_READ,
+    PERMISSIONS.INCIDENT_MANAGE,
   ],
   PHARMACIST_IN_CHARGE: [
     PERMISSIONS.DASHBOARD_LOCATION,
@@ -203,6 +219,10 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.DOCUMENT_WRITE,
     PERMISSIONS.SIGNATURE_MANAGE,
     PERMISSIONS.REPORT_RUN,
+    PERMISSIONS.SHIFT_READ,
+    PERMISSIONS.SHIFT_WRITE,
+    PERMISSIONS.INCIDENT_READ,
+    PERMISSIONS.INCIDENT_MANAGE,
   ],
   PHARMACY_TECHNICIAN: [
     PERMISSIONS.DASHBOARD_LOCATION,
@@ -218,11 +238,13 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.MESSAGE_SEND,
     PERMISSIONS.SEARCH_GLOBAL,
     PERMISSIONS.DOCUMENT_READ,
+    PERMISSIONS.SHIFT_READ,
   ],
   CASHIER: [
     PERMISSIONS.DASHBOARD_LOCATION,
     PERMISSIONS.POS_SELL,
     PERMISSIONS.MESSAGE_SEND,
+    PERMISSIONS.SHIFT_READ,
   ],
   INVENTORY_MANAGER: [
     PERMISSIONS.DASHBOARD_LOCATION,
@@ -238,6 +260,7 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.DOCUMENT_READ,
     PERMISSIONS.DATA_IMPORT,
     PERMISSIONS.REPORT_RUN,
+    PERMISSIONS.SHIFT_READ,
   ],
   ACCOUNTANT: [
     PERMISSIONS.DASHBOARD_LOCATION,
@@ -247,5 +270,6 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.SEARCH_GLOBAL,
     PERMISSIONS.DOCUMENT_READ,
     PERMISSIONS.REPORT_RUN,
+    PERMISSIONS.SHIFT_READ,
   ],
 };

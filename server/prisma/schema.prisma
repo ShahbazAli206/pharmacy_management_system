@@ -120,6 +120,8 @@ model Pharmacy {
   transfersOut       StockTransfer[]   @relation("TransfersOut")
   transfersIn        StockTransfer[]   @relation("TransfersIn")
   attendance         Attendance[]
+  shifts             Shift[]
+  incidentReports    IncidentReport[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -156,6 +158,10 @@ model User {
   transfersRequested   StockTransfer[]    @relation("TransfersRequested")
   transfersApproved    StockTransfer[]    @relation("TransfersApproved")
   attendance           Attendance[]
+  shifts               Shift[]            @relation("ShiftAssignee")
+  shiftsCreated        Shift[]            @relation("ShiftCreatedBy")
+  incidentsReported    IncidentReport[]   @relation("IncidentReporter")
+  incidentsResolved    IncidentReport[]   @relation("IncidentResolver")
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -1103,4 +1109,84 @@ model Attendance {
 
   @@index([userId])
   @@index([pharmacyId, clockInAt])
+}
+
+// ---------------------------------------------------------------------------
+// HR — shift scheduling. Manager-assigned shifts per staff member per location.
+// ---------------------------------------------------------------------------
+model Shift {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation("ShiftAssignee", fields: [userId], references: [id])
+  pharmacyId String
+  pharmacy   Pharmacy    @relation(fields: [pharmacyId], references: [id])
+  startAt    DateTime
+  endAt      DateTime
+  role       String? // free-text role/station for the shift, e.g. "Pharmacist", "Cashier"
+  notes      String?
+  status     ShiftStatus @default(SCHEDULED)
+  createdById String
+  createdBy   User       @relation("ShiftCreatedBy", fields: [createdById], references: [id])
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([userId, startAt])
+  @@index([pharmacyId, startAt])
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  PUBLISHED
+  CANCELLED
+}
+
+// ---------------------------------------------------------------------------
+// HR — incident reports. Any staff member can file one; PIC/partner/owner
+// triage and resolve. Separate from ComplianceAlert (regulatory) — this is
+// workplace safety / patient-complaint / security incident tracking.
+// ---------------------------------------------------------------------------
+enum IncidentCategory {
+  MEDICATION_ERROR
+  WORKPLACE_SAFETY
+  THEFT_SECURITY
+  PATIENT_COMPLAINT
+  EQUIPMENT_FAILURE
+  OTHER
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+model IncidentReport {
+  id               String           @id @default(uuid())
+  pharmacyId       String
+  pharmacy         Pharmacy         @relation(fields: [pharmacyId], references: [id])
+  reportedByUserId String
+  reportedBy       User             @relation("IncidentReporter", fields: [reportedByUserId], references: [id])
+  category         IncidentCategory
+  severity         IncidentSeverity @default(LOW)
+  occurredAt       DateTime
+  location         String? // where within the pharmacy it happened
+  description      String
+  actionTaken      String?
+  status           IncidentStatus   @default(OPEN)
+  resolvedByUserId String?
+  resolvedBy       User?            @relation("IncidentResolver", fields: [resolvedByUserId], references: [id])
+  resolvedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([pharmacyId, status])
+  @@index([reportedByUserId])
 }

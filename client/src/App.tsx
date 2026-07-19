@@ -15,6 +15,8 @@ import { Narcotics } from './pages/Narcotics';
 import { Transfers } from './pages/Transfers';
 import { Staff } from './pages/Staff';
 import { Attendance } from './pages/Attendance';
+import { Scheduling } from './pages/Scheduling';
+import { Incidents } from './pages/Incidents';
 import { Recalls } from './pages/Recalls';
 import { Notifications } from './pages/Notifications';
 import { Compliance } from './pages/Compliance';
@@ -239,6 +241,26 @@ export default function App() {
           <ProtectedRoute>
             <Layout>
               <Attendance />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/scheduling"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Scheduling />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/incidents"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Incidents />
             </Layout>
           </ProtectedRoute>
         }

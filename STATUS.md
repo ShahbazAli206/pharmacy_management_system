@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19
+**Last updated:** 2026-07-19 (HR incident reports shipped)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -49,7 +49,27 @@ auth/RBAC/location-scoping + a core clinical workflow.
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
 
-### Shipped this session (2026-07-19) — all committed + browser/API verified
+### Shipped this session (2026-07-19, part 3) — HR incident reports, browser/API verified
+- **New feature — Incident reports (spec §11 HR follow-on):** `IncidentReport` model + migration
+  (`hr_incident_reports`), `INCIDENT_READ`/`INCIDENT_MANAGE` permissions (owner/partner/PIC
+  triage; filing itself is self-service, open to every role), new
+  `server/src/modules/incidents` (file/list-mine self-service, location-scoped list + update +
+  resolve + close for managers, audit-logged), and an **Incident Reports client page** (report
+  form, "my reports", manager triage table with resolve/close, owner location + status filters).
+  Verified via live API (file→list→resolve→close, RBAC gate on the manager endpoints) and
+  in-browser (Playwright: nav link, page renders, form submit produces a new row, zero console
+  errors). 47 permissions now seeded (was 45).
+
+### Shipped this session (2026-07-19, part 2) — HR scheduling, browser/API verified
+- **New feature — Shift scheduling (spec §11 HR follow-on):** `Shift` model + migration
+  (`hr_scheduling`), `SHIFT_READ`/`SHIFT_WRITE` permissions wired into every role, new
+  `server/src/modules/scheduling` (list/create/update/publish/cancel, location-scoped,
+  audit-logged), and a **Scheduling client page** (my-shifts, create-shift form, 14-day team
+  schedule with publish/cancel). Verified via live API calls (create/publish/cancel, cross-role
+  RBAC: cashier read-only vs partner/PIC read-write, audit trail present) and in-browser
+  (Playwright: nav link, both sections render, zero console errors, Cancel button works live).
+
+### Shipped this session (2026-07-19, part 1) — all committed + browser/API verified
 - **Phase 6 QA:** 35 HTTP integration tests (`test:integration`) + 200-user load test
   (`loadtest`, p99 ~1.9s / 0 errors); rate limits made env-tunable.
 - **New client pages** (every backend module now has a UI): Point of Sale, Messages
@@ -96,8 +116,12 @@ for location-scoped writes (`76bbea3`).
 
 ### 5. Larger functional gaps (new build needed)
 - [x] **HR — attendance/clock-in DONE** (`Attendance` model + migration, `/attendance` clock-in/
-  out/me + team log, Attendance page). Still left: scheduling, training/CE, performance
-  reviews, incident reports.
+  out/me + team log, Attendance page).
+- [x] **HR — shift scheduling DONE** (`Shift` model + migration, `/scheduling` list/create/update/
+  publish/cancel + `/me`, Scheduling page).
+- [x] **HR — incident reports DONE** (`IncidentReport` model + migration, `/incidents`
+  file/mine/list/update/resolve/close, Incident Reports page). Still left: training/CE tracking,
+  performance reviews.
 - [x] **Financial — AP aging DONE** (`/finance/ap-aging` + Finance panel). Still left:
   cash-flow forecast, budget variance, PDF/QuickBooks export.
 
@@ -154,10 +178,9 @@ Typecheck: `npm run typecheck`.
 The **buildable UI backlog is clear** — every backend module has a client page (see "Shipped
 this session"). Pick one of the remaining directions, in rough priority:
 
-1. **HR module (spec §11)** — the largest unbuilt functional area. Suggested first slice:
-   **scheduling + attendance** (new `Shift`/`Attendance` models + migration + pages), then
-   training/CE, reviews, incident reports.
-2. **Financial extras** — cash-flow forecast, AP aging, budget variance, PDF/QuickBooks export.
+1. **HR module (spec §11)** — attendance, scheduling, and incident reports are done. Remaining
+   slice: training/CE tracking, performance reviews.
+2. **Financial extras** — cash-flow forecast, budget variance, PDF/QuickBooks export.
 3. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
    insurance / payments) — *blocked on credentials*.
 4. **Go-live hardening** — penetration/security review (`/security-review`), managed Postgres,

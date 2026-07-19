@@ -116,6 +116,27 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] Refill reminders (CASL opt-in) generated + dispatched via pluggable provider (Twilio/SendGrid stub). **Client: Notifications page** — queue with status badges, generate refill reminders, dispatch pending.
 - [ ] Real WebRTC/HLS live streaming + 16-grid thumbnails; motion-event push; automated scheduled report delivery.
 
+## PHASE 12 — HR scheduling (new build, spec §11 follow-on)  ← IN PROGRESS
+- [x] `Shift` model + migration (`hr_scheduling`): assignee, location, start/end, role/station,
+  notes, status (SCHEDULED/PUBLISHED/CANCELLED), created-by. Back-relations on `User`/`Pharmacy`.
+- [x] `SHIFT_READ`/`SHIFT_WRITE` permissions wired into the role matrix (every role reads the
+  schedule; owner/partner/PIC can write) — no `seed.ts` changes needed, picked up generically.
+- [x] `server/src/modules/scheduling`: list/create/update/publish/cancel endpoints, location-scoped,
+  Zod-validated, audit-logged. Self-service `GET /scheduling/shifts/me` open to any authenticated
+  user (mirrors the attendance `/me` pattern).
+- [x] Client: **Scheduling page** — "my upcoming shifts", a create-shift form (staff picker +
+  datetime range + optional role/notes), and a 14-day team schedule table with publish/cancel.
+  Nav link + route registered; verified in-browser (Playwright) with zero console errors.
+- [x] **Incident reports**: `IncidentReport` model + migration (`hr_incident_reports`) — category,
+  severity, status (OPEN/UNDER_REVIEW/RESOLVED/CLOSED), reporter + resolver. `INCIDENT_READ`/
+  `INCIDENT_MANAGE` permissions (owner/partner/PIC triage; every role can self-file). New
+  `server/src/modules/incidents` (self-service file/list-mine open to any authenticated user;
+  location-scoped list/update/resolve/close for managers, audit-logged). **Client: Incident
+  Reports page** — report form, "my reports", and a manager triage table with resolve/close.
+  Verified via live API (file→list→resolve→close) and in-browser (Playwright: nav link, form
+  submit, table updates, zero console errors).
+- [ ] Training/CE tracking, performance reviews (still unbuilt HR sub-areas).
+
 ## PHASE 6 — QA & Hardening (Months 13–15)  ← IN PROGRESS
 - [x] Automated unit suite (vitest): RBAC guards, JWT, MFA, drug-interaction engine, tax, CSV, barcode — 35 tests passing (`npm test`, DB-independent).
 - [x] **HTTP-level integration suite (supertest vs live DB, RLS active) — 35 tests passing (`npm run test:integration`):** auth flow (login/refresh-rotation/logout/`/me`, bad-cred + tampered-token 401s), DB-backed RBAC (owner-only endpoints 403 for partner / 200 for owner), location-scoping + RLS isolation (partner cannot list/read/write another location's patients; other-location rows are RLS-invisible → 404), and a core clinical workflow (patient → allergy/condition → dashboard/inventory reads → audit-trail assertion). Sequential single-fork config; self-cleaning test data via superuser `DIRECT_URL`.
