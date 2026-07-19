@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 
 type RecallRisk = 'TYPE_I' | 'TYPE_II' | 'TYPE_III';
 type QuarantineStatus = 'QUARANTINED' | 'CLEARED' | 'DESTROYED';
@@ -66,6 +67,7 @@ function statusBadge(status: QuarantineStatus): string {
 }
 
 export function Recalls() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('recalls');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -73,8 +75,8 @@ export function Recalls() {
   return (
     <div>
       <header className="page-head">
-        <h1>Recalls</h1>
-        <p className="muted">Health Canada drug recalls and inventory quarantine workflow</p>
+        <h1>{t('navRecalls')}</h1>
+        <p className="muted">{t('recallsSubtitle')}</p>
       </header>
 
       <div className="tabs">
@@ -86,7 +88,7 @@ export function Recalls() {
             setNotice(null);
           }}
         >
-          Recalls
+          {t('navRecalls')}
         </button>
         <button
           className={`tab ${tab === 'quarantines' ? 'active' : ''}`}
@@ -96,7 +98,7 @@ export function Recalls() {
             setNotice(null);
           }}
         >
-          Quarantines
+          {t('quarantinesTab')}
         </button>
       </div>
 
@@ -117,6 +119,7 @@ function RecallsTab({
   onNotice: (m: string | null) => void;
 }) {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [rows, setRows] = useState<RecallRow[] | null>(null);
   const [recallNumber, setRecallNumber] = useState('');
   const [productName, setProductName] = useState('');
@@ -129,9 +132,9 @@ function RecallsTab({
     try {
       setRows(await api<RecallRow[]>('/recalls'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to load recalls');
+      onError(e instanceof ApiError ? e.message : t('failedToLoadRecalls'));
     }
-  }, [onError]);
+  }, [onError, t]);
 
   useEffect(() => {
     void load();
@@ -153,9 +156,7 @@ function RecallsTab({
           risk,
         }),
       });
-      onNotice(
-        `Recall ${res.recall.recallNumber} ingested. ${res.locationsAffected} location(s) affected.`,
-      );
+      onNotice(t('recallIngestedNotice', { number: res.recall.recallNumber, count: res.locationsAffected }));
       setRecallNumber('');
       setProductName('');
       setDin('');
@@ -163,7 +164,7 @@ function RecallsTab({
       setRisk('TYPE_I');
       await load();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Ingest failed');
+      onError(e instanceof ApiError ? e.message : t('ingestFailedFallback'));
     } finally {
       setBusy(false);
     }
@@ -173,10 +174,10 @@ function RecallsTab({
     <>
       {can('recall:manage') && (
         <section className="panel">
-          <h2>Ingest recall</h2>
+          <h2>{t('ingestRecallHeading')}</h2>
           <div className="form-grid">
             <label className="field">
-              Recall number
+              {t('recallNumberLabel')}
               <input
                 value={recallNumber}
                 onChange={(e) => setRecallNumber(e.target.value)}
@@ -184,7 +185,7 @@ function RecallsTab({
               />
             </label>
             <label className="field">
-              Product name
+              {t('productNameLabel')}
               <input
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
@@ -192,19 +193,19 @@ function RecallsTab({
               />
             </label>
             <label className="field">
-              DIN
+              {t('colDin')}
               <input value={din} onChange={(e) => setDin(e.target.value)} placeholder="02240000" />
             </label>
             <label className="field">
-              Risk
+              {t('riskLabel')}
               <select value={risk} onChange={(e) => setRisk(e.target.value as RecallRisk)}>
-                <option value="TYPE_I">Type I (most severe)</option>
+                <option value="TYPE_I">{t('riskTypeIOption')}</option>
                 <option value="TYPE_II">Type II</option>
                 <option value="TYPE_III">Type III</option>
               </select>
             </label>
             <label className="field">
-              Reason
+              {t('reasonLabel')}
               <input
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -216,38 +217,38 @@ function RecallsTab({
               onClick={ingest}
               disabled={busy || !recallNumber.trim() || !productName.trim() || !reason.trim()}
             >
-              {busy ? 'Ingesting…' : 'Ingest recall'}
+              {busy ? t('ingestingEllipsis') : t('ingestRecallButton')}
             </button>
           </div>
         </section>
       )}
 
       <section className="panel">
-        <h2>Recalls</h2>
+        <h2>{t('navRecalls')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Recall #</th>
-                <th>Product</th>
-                <th>DIN</th>
-                <th>Risk</th>
-                <th>Reason</th>
-                <th>Published</th>
+                <th>{t('colRecallNum')}</th>
+                <th>{t('colProduct')}</th>
+                <th>{t('colDin')}</th>
+                <th>{t('riskLabel')}</th>
+                <th>{t('reasonLabel')}</th>
+                <th>{t('colPublished')}</th>
               </tr>
             </thead>
             <tbody>
               {rows === null && (
                 <tr>
                   <td colSpan={6} className="muted">
-                    Loading…
+                    {t('loading')}
                   </td>
                 </tr>
               )}
               {rows !== null && rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="muted">
-                    No recalls recorded.
+                    {t('noRecallsRecorded')}
                   </td>
                 </tr>
               )}
@@ -279,6 +280,7 @@ function QuarantinesTab({
   onNotice: (m: string | null) => void;
 }) {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const [rows, setRows] = useState<QuarantineRow[] | null>(null);
   const [locations, setLocations] = useState<OwnerLocation[]>([]);
@@ -302,9 +304,9 @@ function QuarantinesTab({
       const query = isOwner && pharmacyId ? `?pharmacyId=${encodeURIComponent(pharmacyId)}` : '';
       setRows(await api<QuarantineRow[]>(`/recalls/quarantines${query}`));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to load quarantines');
+      onError(e instanceof ApiError ? e.message : t('failedToLoadQuarantines'));
     }
-  }, [isOwner, pharmacyId, onError]);
+  }, [isOwner, pharmacyId, onError, t]);
 
   useEffect(() => {
     void load();
@@ -319,10 +321,10 @@ function QuarantinesTab({
         method: 'POST',
         body: JSON.stringify({ status }),
       });
-      onNotice(status === 'CLEARED' ? 'Quarantine cleared.' : 'Stock marked destroyed.');
+      onNotice(status === 'CLEARED' ? t('quarantineClearedNotice') : t('stockDestroyedNotice'));
       await load();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Update failed');
+      onError(e instanceof ApiError ? e.message : t('updateFailedFallback'));
     } finally {
       setBusyId(null);
     }
@@ -330,13 +332,13 @@ function QuarantinesTab({
 
   return (
     <section className="panel">
-      <h2>Quarantines</h2>
+      <h2>{t('quarantinesTab')}</h2>
       {isOwner && (
         <div className="toolbar">
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.province})
@@ -348,18 +350,18 @@ function QuarantinesTab({
       )}
 
       {isOwner && !pharmacyId ? (
-        <div className="muted">Select a location to view quarantine records.</div>
+        <div className="muted">{t('selectLocationToViewQuarantines')}</div>
       ) : (
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>DIN</th>
-                <th>Recall #</th>
-                <th>Location</th>
-                <th className="num">Quantity</th>
-                <th>Status</th>
+                <th>{t('colProduct')}</th>
+                <th>{t('colDin')}</th>
+                <th>{t('colRecallNum')}</th>
+                <th>{t('locationLabel')}</th>
+                <th className="num">{t('colQuantity')}</th>
+                <th>{t('colStatus')}</th>
                 {can('recall:manage') && <th></th>}
               </tr>
             </thead>
@@ -367,14 +369,14 @@ function QuarantinesTab({
               {rows === null && (
                 <tr>
                   <td colSpan={can('recall:manage') ? 7 : 6} className="muted">
-                    Loading…
+                    {t('loading')}
                   </td>
                 </tr>
               )}
               {rows !== null && rows.length === 0 && (
                 <tr>
                   <td colSpan={can('recall:manage') ? 7 : 6} className="muted">
-                    No quarantine records.
+                    {t('noQuarantineRecords')}
                   </td>
                 </tr>
               )}
@@ -402,14 +404,14 @@ function QuarantinesTab({
                             disabled={busyId === q.id}
                             onClick={() => setStatus(q.id, 'CLEARED')}
                           >
-                            {busyId === q.id ? 'Working…' : 'Clear'}
+                            {busyId === q.id ? t('workingEllipsis') : t('clearButton')}
                           </button>
                           <button
                             className="btn btn-ghost"
                             disabled={busyId === q.id}
                             onClick={() => setStatus(q.id, 'DESTROYED')}
                           >
-                            Destroy
+                            {t('destroyButton')}
                           </button>
                         </span>
                       )}

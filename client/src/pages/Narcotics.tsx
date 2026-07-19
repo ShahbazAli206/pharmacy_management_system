@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 
 // ---- Inline types (do not import from lib/types) -------------------------
 
@@ -63,6 +64,7 @@ const fmtDate = (s: string) => new Date(s).toLocaleString('en-CA');
 
 export function Narcotics() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const writable = can('narcotics:write');
 
@@ -142,16 +144,14 @@ export function Narcotics() {
   return (
     <div>
       <header className="page-head">
-        <h1>Narcotics</h1>
-        <p className="muted">
-          Controlled-substance register — running balances, counts, and discrepancy resolution
-        </p>
+        <h1>{t('navNarcotics')}</h1>
+        <p className="muted">{t('narcoticsSubtitle')}</p>
       </header>
 
       {isOwner && (
         <section className="panel">
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select
               className="select"
               value={pharmacyId}
@@ -162,7 +162,7 @@ export function Narcotics() {
                 setError(null);
               }}
             >
-              <option value="">Select a location…</option>
+              <option value="">{t('selectLocationOption')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.province})
@@ -181,16 +181,16 @@ export function Narcotics() {
       {error && <div className="alert alert-error">{error}</div>}
 
       {isOwner && !pharmacyId ? (
-        <div className="muted">Select a location to view its controlled-substance register.</div>
+        <div className="muted">{t('selectLocationToViewRegister')}</div>
       ) : (
         <>
           {/* Product picker */}
           <section className="panel">
-            <h2>Controlled substance</h2>
+            <h2>{t('controlledSubstanceLabel')}</h2>
             <div className="toolbar">
               <input
                 className="search"
-                placeholder="Search controlled products (e.g. Lorazepam)…"
+                placeholder={t('searchControlledPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -198,7 +198,7 @@ export function Narcotics() {
                 }}
               />
               <button className="btn" onClick={() => void runSearch()} disabled={searching}>
-                {searching ? 'Searching…' : 'Search'}
+                {searching ? t('searchingEllipsis') : t('navSearch')}
               </button>
               {selected && (
                 <button
@@ -209,14 +209,14 @@ export function Narcotics() {
                     setSearch('');
                   }}
                 >
-                  Clear selection
+                  {t('clearSelectionButton')}
                 </button>
               )}
             </div>
 
             {selected ? (
               <div style={{ marginTop: 12 }}>
-                <span className="badge badge-warn">Selected</span>{' '}
+                <span className="badge badge-warn">{t('selectedBadge')}</span>{' '}
                 <strong>{selected.name}</strong>{' '}
                 <span className="muted">
                   {selected.strength} · DIN <span className="mono">{selected.din}</span> ·{' '}
@@ -229,10 +229,10 @@ export function Narcotics() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Product</th>
-                        <th>Strength</th>
-                        <th>DIN</th>
-                        <th>Schedule</th>
+                        <th>{t('colProduct')}</th>
+                        <th>{t('colStrength')}</th>
+                        <th>{t('colDin')}</th>
+                        <th>{t('colSchedule')}</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -247,7 +247,7 @@ export function Narcotics() {
                           </td>
                           <td>
                             <button className="btn btn-primary" onClick={() => setSelected(p)}>
-                              Select
+                              {t('selectButton')}
                             </button>
                           </td>
                         </tr>
@@ -259,7 +259,7 @@ export function Narcotics() {
             )}
             {!selected && !searching && search.trim() && products.length === 0 && (
               <div className="muted" style={{ marginTop: 12 }}>
-                No controlled products match “{search.trim()}”.
+                {t('noControlledProductsMatch', { query: search.trim() })}
               </div>
             )}
           </section>
@@ -269,11 +269,11 @@ export function Narcotics() {
             <section className="panel">
               <div className="stat-grid">
                 <div className="stat-card">
-                  <div className="stat-label">Running balance</div>
+                  <div className="stat-label">{t('runningBalanceLabel')}</div>
                   <div className="stat-value">{runningBalance}</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-label">Ledger entries</div>
+                  <div className="stat-label">{t('ledgerEntriesLabel')}</div>
                   <div className="stat-value">{register ? register.length : 0}</div>
                 </div>
               </div>
@@ -322,51 +322,53 @@ export function Narcotics() {
 
           {/* Register table */}
           <section className="panel">
-            <h2>Register {selected ? `— ${selected.name}` : '(all controlled products)'}</h2>
+            <h2>
+              {t('registerHeading')} {selected ? `— ${selected.name}` : t('allControlledProductsLabel')}
+            </h2>
             {register === null ? (
-              <div className="muted">Loading register…</div>
+              <div className="muted">{t('loadingRegister')}</div>
             ) : (
               <div className="table-wrap">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Product</th>
-                      <th>Type</th>
-                      <th className="num">Change</th>
-                      <th className="num">Balance</th>
-                      <th>By</th>
-                      <th>Notes</th>
+                      <th>{t('colDate')}</th>
+                      <th>{t('colProduct')}</th>
+                      <th>{t('typeLabel')}</th>
+                      <th className="num">{t('colChange')}</th>
+                      <th className="num">{t('colBalance')}</th>
+                      <th>{t('colBy')}</th>
+                      <th>{t('colNotes')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {register.length === 0 && (
                       <tr>
                         <td colSpan={7} className="muted">
-                          No register entries yet.
+                          {t('noRegisterEntriesYet')}
                         </td>
                       </tr>
                     )}
-                    {register.map((t) => (
-                      <tr key={t.id}>
-                        <td>{fmtDate(t.createdAt)}</td>
+                    {register.map((r) => (
+                      <tr key={r.id}>
+                        <td>{fmtDate(r.createdAt)}</td>
                         <td>
-                          {t.product.name}{' '}
-                          <span className="muted">{t.product.strength}</span>
+                          {r.product.name}{' '}
+                          <span className="muted">{r.product.strength}</span>
                         </td>
                         <td>
-                          <span className="badge badge-muted">{t.type}</span>
+                          <span className="badge badge-muted">{r.type}</span>
                         </td>
                         <td className="num">
-                          {t.quantityChange > 0 ? `+${t.quantityChange}` : t.quantityChange}
+                          {r.quantityChange > 0 ? `+${r.quantityChange}` : r.quantityChange}
                         </td>
-                        <td className="num">{t.balanceAfter}</td>
+                        <td className="num">{r.balanceAfter}</td>
                         <td>
-                          {t.performedBy
-                            ? `${t.performedBy.firstName} ${t.performedBy.lastName}`
+                          {r.performedBy
+                            ? `${r.performedBy.firstName} ${r.performedBy.lastName}`
                             : '—'}
                         </td>
-                        <td className="muted">{t.notes ?? '—'}</td>
+                        <td className="muted">{r.notes ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -395,6 +397,7 @@ function TxnForm({
   onDone: (msg: string) => void;
   onError: (msg: string) => void;
 }) {
+  const { t } = useI18n();
   const [type, setType] = useState<TxnType>('RECEIPT');
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
@@ -403,7 +406,7 @@ function TxnForm({
   const submit = async () => {
     const qty = parseInt(quantity, 10);
     if (Number.isNaN(qty)) {
-      onError('Quantity change must be a whole number.');
+      onError(t('quantityMustBeWholeNumber'));
       return;
     }
     setBusy(true);
@@ -420,9 +423,9 @@ function TxnForm({
       });
       setQuantity('');
       setNotes('');
-      onDone(`Recorded ${type} of ${qty} for ${product.name}.`);
+      onDone(t('transactionRecordedNotice', { type, qty, name: product.name }));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to record transaction');
+      onError(e instanceof ApiError ? e.message : t('failedToRecordTransaction'));
     } finally {
       setBusy(false);
     }
@@ -430,24 +433,24 @@ function TxnForm({
 
   return (
     <section className="panel">
-      <h2>Record transaction</h2>
+      <h2>{t('recordTransactionHeading')}</h2>
       <div className="form-grid">
         <label className="field">
-          Type
+          {t('typeLabel')}
           <select
             className="select"
             value={type}
             onChange={(e) => setType(e.target.value as TxnType)}
           >
-            {TXN_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            {TXN_TYPES.map((txnType) => (
+              <option key={txnType} value={txnType}>
+                {txnType}
               </option>
             ))}
           </select>
         </label>
         <label className="field">
-          Quantity change (may be negative)
+          {t('quantityChangeLabel')}
           <input
             className="num"
             type="number"
@@ -458,7 +461,7 @@ function TxnForm({
           />
         </label>
         <label className="field">
-          Notes
+          {t('notesLabel')}
           <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
         </label>
         <button
@@ -466,7 +469,7 @@ function TxnForm({
           onClick={() => void submit()}
           disabled={busy || !quantity.trim()}
         >
-          {busy ? 'Recording…' : 'Record transaction'}
+          {busy ? t('recordingEllipsis') : t('recordTransactionButton')}
         </button>
       </div>
     </section>
@@ -490,6 +493,7 @@ function CountForm({
   onError: (msg: string) => void;
   onResolved: (msg: string) => void;
 }) {
+  const { t } = useI18n();
   const [period, setPeriod] = useState<CountPeriod>('MORNING');
   const [counted, setCounted] = useState('');
   const [notes, setNotes] = useState('');
@@ -500,7 +504,7 @@ function CountForm({
   const submit = async () => {
     const qty = parseInt(counted, 10);
     if (Number.isNaN(qty) || qty < 0) {
-      onError('Counted quantity must be a non-negative whole number.');
+      onError(t('countedMustBeNonNegative'));
       return;
     }
     setBusy(true);
@@ -520,14 +524,17 @@ function CountForm({
       setCounted('');
       setNotes('');
       if (res.discrepancy === 0) {
-        onDone(`Count balanced for ${product.name} (${res.countedQuantity} on hand).`);
+        onDone(t('countBalancedNotice', { name: product.name, qty: res.countedQuantity }));
       } else {
         onError(
-          `Discrepancy of ${res.discrepancy > 0 ? '+' : ''}${res.discrepancy} for ${product.name}. Product is locked until resolved.`,
+          t('discrepancyNotice', {
+            value: `${res.discrepancy > 0 ? '+' : ''}${res.discrepancy}`,
+            name: product.name,
+          }),
         );
       }
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to record count');
+      onError(e instanceof ApiError ? e.message : t('failedToRecordCount'));
     } finally {
       setBusy(false);
     }
@@ -539,9 +546,9 @@ function CountForm({
     try {
       await api(`/narcotics/count/${result.id}/resolve`, { method: 'POST' });
       setResult(null);
-      onResolved(`Discrepancy resolved for ${product.name}. Register reconciled and unlocked.`);
+      onResolved(t('discrepancyResolvedNotice', { name: product.name }));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to resolve discrepancy');
+      onError(e instanceof ApiError ? e.message : t('failedToResolveDiscrepancy'));
     } finally {
       setResolving(false);
     }
@@ -551,10 +558,10 @@ function CountForm({
 
   return (
     <section className="panel">
-      <h2>Record count</h2>
+      <h2>{t('recordCountHeading')}</h2>
       <div className="form-grid">
         <label className="field">
-          Period
+          {t('periodLabel')}
           <select
             className="select"
             value={period}
@@ -568,7 +575,7 @@ function CountForm({
           </select>
         </label>
         <label className="field">
-          Counted quantity
+          {t('countedQuantityLabel')}
           <input
             className="num"
             type="number"
@@ -576,11 +583,11 @@ function CountForm({
             min={0}
             value={counted}
             onChange={(e) => setCounted(e.target.value)}
-            placeholder="Physical count"
+            placeholder={t('physicalCountPlaceholder')}
           />
         </label>
         <label className="field">
-          Notes
+          {t('notesLabel')}
           <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
         </label>
         <button
@@ -588,7 +595,7 @@ function CountForm({
           onClick={() => void submit()}
           disabled={busy || !counted.trim()}
         >
-          {busy ? 'Recording…' : 'Record count'}
+          {busy ? t('recordingEllipsis') : t('recordCountButton')}
         </button>
       </div>
 
@@ -596,15 +603,15 @@ function CountForm({
         <div style={{ marginTop: 16 }}>
           <div className="stat-grid">
             <div className="stat-card">
-              <div className="stat-label">Counted</div>
+              <div className="stat-label">{t('countedLabel')}</div>
               <div className="stat-value">{result.countedQuantity}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Expected</div>
+              <div className="stat-label">{t('expectedLabel')}</div>
               <div className="stat-value">{result.expectedQuantity}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Discrepancy</div>
+              <div className="stat-label">{t('discrepancyLabel')}</div>
               <div
                 className="stat-value"
                 style={{ color: hasDiscrepancy ? 'var(--danger)' : 'var(--ok)' }}
@@ -616,22 +623,21 @@ function CountForm({
 
           {hasDiscrepancy ? (
             <div className="alert alert-error" style={{ marginTop: 12 }}>
-              <span className="badge badge-danger">DISCREPANCY</span> Counted{' '}
-              {result.countedQuantity}, expected {result.expectedQuantity}. This product is{' '}
-              <strong>locked</strong> until the discrepancy is resolved.
+              <span className="badge badge-danger">{t('discrepancyBadge')}</span>{' '}
+              {t('discrepancyBanner', { counted: result.countedQuantity, expected: result.expectedQuantity })}
               <div style={{ marginTop: 10 }}>
                 <button
                   className="btn btn-primary"
                   onClick={() => void resolve()}
                   disabled={resolving}
                 >
-                  {resolving ? 'Resolving…' : 'Resolve & unlock'}
+                  {resolving ? t('resolvingEllipsis') : t('resolveAndUnlockButton')}
                 </button>
               </div>
             </div>
           ) : (
             <div style={{ marginTop: 12 }}>
-              <span className="badge badge-ok">BALANCED</span>
+              <span className="badge badge-ok">{t('balancedBadge')}</span>
             </div>
           )}
         </div>

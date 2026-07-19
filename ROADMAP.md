@@ -294,14 +294,21 @@ Legend: [x] done · [~] partial · [ ] not started
   easy to miss since it's not JSX. Verified in-browser (triple interpolation in Inventory's
   subtitle line rendered correctly: "3 produit(s) · 0 sous le seuil de réapprovisionnement ·
   0 alerte(s) d’expiration"). 73/73 tests still pass.
+- [x] **i18n coverage, round 4**: Prescribers, Recalls, and Narcotics also fully translated —
+  Narcotics in particular is the page most directly tied to the Quebec-compliance
+  justification for building i18n at all (controlled-substance register, CDSA/NAPRA
+  discrepancy workflow). Multiple dynamic notice strings with 1-3 interpolated values each
+  (e.g. `t('discrepancyNotice', { value, name })`, `t('countBalancedNotice', { name, qty })`).
+  Verified in-browser across all three pages. 73/73 tests still pass.
 
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
 - Bull/Redis job queue; WebRTC/HLS streaming; theme manager; i18n coverage for the
   remaining pages beyond the persistent chrome + Login + Settings + Owner Dashboard +
-  Location Dashboard + Patients + Products + Inventory + Prescriptions + Compliance already
-  translated (~17 pages left, same `t('key')` pattern to extend).
+  Location Dashboard + Patients + Products + Inventory + Prescriptions + Compliance +
+  Prescribers + Recalls + Narcotics already translated (~14 pages left, same `t('key')`
+  pattern to extend).
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv

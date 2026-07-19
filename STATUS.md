@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (i18n coverage extended to 3 more pages: Inventory, Prescriptions, Compliance)
+**Last updated:** 2026-07-19 (i18n coverage extended to 3 more pages: Prescribers, Recalls, Narcotics)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,25 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 18) — i18n coverage extended (Prescribers, Recalls, Narcotics)
+- Continued extending i18n on "continue": fully translated **Prescribers, Recalls (both
+  tabs), and Narcotics**. Narcotics is the largest and most thematically relevant page yet —
+  it's the controlled-substance register with CDSA/NAPRA discrepancy locking, the single
+  page most directly tied to the reason i18n was scoped to French in the first place
+  (Quebec pharmacy regulatory context). Added ~10 dynamic notice strings with 1-3
+  interpolated values each (e.g. discrepancy amount + product name, counted/expected
+  quantities).
+  Caught and fixed a real variable-shadowing bug while translating `TxnForm`: the original
+  code used `t` as both the map-callback variable (`TXN_TYPES.map((t) => ...)`) and would
+  have collided with the newly-destructured `t()` translation function — renamed the map
+  variable to `txnType` before it could cause confusion.
+  Verified in-browser via Playwright across all three pages — one apparent failure
+  ("Narcotics FR search button: false") turned out to be a locator ambiguity in the
+  verification script itself (two buttons both contain "Rechercher": the global nav search
+  button and the page's own search button), not a real bug — confirmed by inspecting the
+  actual button text and page content directly. 73/73 tests still pass.
+  ~14 pages remain English-only.
 
 ### Shipped this session (2026-07-19, part 17) — i18n coverage extended (Inventory, Prescriptions, Compliance)
 - Continued extending i18n on "continue": fully translated **Inventory, Prescriptions, and
@@ -414,10 +433,10 @@ for location-scoped writes (`76bbea3`).
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
 - [x] Custom fields — **done this session, extended to Products this session too** (Patients +
   Products both supported now)
-- [x] i18n — **done this session, extended twice more this session** (English/French; chrome
-  + Login + Settings + Owner/Location dashboards + Patients + Products + Inventory +
-  Prescriptions + Compliance now translated, ~17 other pages still English-only — see
-  "Shipped" for how to extend)
+- [x] i18n — **done this session, extended three times more this session** (English/French;
+  chrome + Login + Settings + Owner/Location dashboards + Patients + Products + Inventory +
+  Prescriptions + Compliance + Prescribers + Recalls + Narcotics now translated, ~14 other
+  pages still English-only — see "Shipped" for how to extend)
 
 ---
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 
 interface Prescriber {
   id: string;
@@ -24,6 +25,7 @@ interface OwnerDashboard {
 
 export function Prescribers() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
 
   const [prescribers, setPrescribers] = useState<Prescriber[]>([]);
@@ -95,7 +97,7 @@ export function Prescribers() {
       setCollegeRegNumber('');
       setPhone('');
       setFax('');
-      setNotice('Prescriber added.');
+      setNotice(t('prescriberAddedNotice'));
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -107,16 +109,16 @@ export function Prescribers() {
   return (
     <div>
       <header className="page-head">
-        <h1>Prescribers</h1>
-        <p className="muted">Prescriber directory — physicians and their college registration</p>
+        <h1>{t('navPrescribers')}</h1>
+        <p className="muted">{t('prescribersSubtitle')}</p>
       </header>
 
       {isOwner && (
         <div className="toolbar">
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">All locations</option>
+              <option value="">{t('allLocationsOption')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.province})
@@ -136,13 +138,13 @@ export function Prescribers() {
 
       {can('prescriber:manage') && (
         <section className="panel">
-          <h2>Add prescriber</h2>
+          <h2>{t('addPrescriberHeading')}</h2>
           <div className="form-grid">
             {isOwner && (
               <label className="field">
-                Location
+                {t('locationLabel')}
                 <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-                  <option value="">Select location…</option>
+                  <option value="">{t('selectLocationPlaceholder')}</option>
                   {locations.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.name} ({l.province})
@@ -152,15 +154,15 @@ export function Prescribers() {
               </label>
             )}
             <label className="field">
-              First name
+              {t('firstNameLabel')}
               <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Jane" />
             </label>
             <label className="field">
-              Last name
+              {t('lastNameLabel')}
               <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" />
             </label>
             <label className="field">
-              College reg number
+              {t('collegeRegNumberLabel')}
               <input
                 className="mono"
                 value={collegeRegNumber}
@@ -169,40 +171,40 @@ export function Prescribers() {
               />
             </label>
             <label className="field">
-              Phone
+              {t('phoneLabel')}
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(416) 555-0100" />
             </label>
             <label className="field">
-              Fax
+              {t('faxLabel')}
               <input value={fax} onChange={(e) => setFax(e.target.value)} placeholder="(416) 555-0101" />
             </label>
             <button className="btn btn-primary" onClick={submit} disabled={!canSubmit}>
-              {busy ? 'Saving…' : 'Add prescriber'}
+              {busy ? t('saving') : t('addPrescriberButton')}
             </button>
           </div>
         </section>
       )}
 
       <section className="panel">
-        <h2>Prescribers</h2>
+        <h2>{t('navPrescribers')}</h2>
         {loading ? (
-          <div className="muted">Loading…</div>
+          <div className="muted">{t('loading')}</div>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>College reg #</th>
-                  <th>Phone</th>
-                  <th>Fax</th>
+                  <th>{t('colName')}</th>
+                  <th>{t('colCollegeRegNum')}</th>
+                  <th>{t('phoneLabel')}</th>
+                  <th>{t('faxLabel')}</th>
                 </tr>
               </thead>
               <tbody>
                 {prescribers.length === 0 && (
                   <tr>
                     <td colSpan={4} className="muted">
-                      No prescribers found.
+                      {t('noPrescribersFound')}
                     </td>
                   </tr>
                 )}
