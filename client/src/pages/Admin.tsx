@@ -430,7 +430,11 @@ function BackupsPanel() {
 
 const FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'] as const;
 
+const ENTITY_TYPES = ['PATIENT', 'PRODUCT'] as const;
+const ENTITY_LABELS: Record<(typeof ENTITY_TYPES)[number], string> = { PATIENT: 'Patients', PRODUCT: 'Products' };
+
 function CustomFieldsPanel() {
+  const [entityType, setEntityType] = useState<(typeof ENTITY_TYPES)[number]>('PATIENT');
   const [defs, setDefs] = useState<CustomFieldDefinition[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -442,12 +446,13 @@ function CustomFieldsPanel() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    setDefs(null);
     try {
-      setDefs(await api<CustomFieldDefinition[]>('/custom-fields/definitions?entityType=PATIENT'));
+      setDefs(await api<CustomFieldDefinition[]>(`/custom-fields/definitions?entityType=${entityType}`));
     } catch (e) {
       setError((e as Error).message);
     }
-  }, []);
+  }, [entityType]);
 
   useEffect(() => {
     void load();
@@ -463,7 +468,7 @@ function CustomFieldsPanel() {
       await api('/custom-fields/definitions', {
         method: 'POST',
         body: JSON.stringify({
-          entityType: 'PATIENT',
+          entityType,
           key,
           label: label.trim(),
           fieldType,
@@ -495,9 +500,18 @@ function CustomFieldsPanel() {
 
   return (
     <section className="panel">
-      <h2>Custom fields (Patients)</h2>
+      <div className="page-head row">
+        <h2 style={{ margin: 0 }}>Custom fields</h2>
+        <select value={entityType} onChange={(e) => setEntityType(e.target.value as typeof entityType)}>
+          {ENTITY_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {ENTITY_LABELS[t]}
+            </option>
+          ))}
+        </select>
+      </div>
       <p className="muted" style={{ marginBottom: 12 }}>
-        Extra fields shown on the patient create/edit form — no code change needed.
+        Extra fields shown on the {ENTITY_LABELS[entityType].toLowerCase()} create/edit form — no code change needed.
       </p>
       {error && <div className="alert alert-error">{error}</div>}
 

@@ -10,7 +10,7 @@ import * as service from '../../services/customFields';
 const router = Router();
 router.use(authenticate);
 
-const ENTITY_TYPES = ['PATIENT'] as const;
+const ENTITY_TYPES = ['PATIENT', 'PRODUCT'] as const;
 const FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'] as const;
 
 // Definitions are metadata, not sensitive data — any authenticated user can

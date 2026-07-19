@@ -98,7 +98,7 @@ export interface Patient {
 
 export interface CustomFieldDefinition {
   id: string;
-  entityType: 'PATIENT';
+  entityType: 'PATIENT' | 'PRODUCT';
   key: string;
   label: string;
   fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT';
@@ -341,6 +341,22 @@ export interface ProductRow {
   schedule: string;
   isControlled: boolean;
   defaultPriceCents: number;
+}
+
+export interface ProductDetail {
+  id: string;
+  din: string;
+  name: string;
+  genericName: string | null;
+  isGeneric: boolean;
+  strength: string;
+  form: string;
+  manufacturer: string | null;
+  schedule: string;
+  isControlled: boolean;
+  defaultPriceCents: number;
+  interactionClasses: string;
+  customFields: Record<string, unknown>;
 }
 
 export type SaleItemType = 'OTC' | 'RX' | 'COMPOUND' | 'SERVICE';

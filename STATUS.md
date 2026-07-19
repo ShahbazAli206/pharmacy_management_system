@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (French translations given a critical self-review pass)
+**Last updated:** 2026-07-19 (Product Catalog UI shipped, closing the Product custom-fields gap)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,28 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 15) — Product Catalog UI + Product custom fields
+- Re-scanned ROADMAP/STATUS for the next concrete step and picked the one genuine gap left
+  from an earlier "done" claim: Products had **zero client UI** — creatable only via
+  seed/API — which was also the exact reason Product custom fields hadn't been built.
+  Built a **Product Catalog** page (list + search + create/edit, mirroring the Patients
+  page's pattern) against the existing `GET/POST/PATCH /products` endpoints — no new backend
+  needed for the base CRUD. Nav link gated by `inventory:read` (same as the existing
+  Inventory page); create/edit affordances gated by `product:manage`.
+  Then closed the custom-fields gap: extended `CustomFieldEntityType` with `PRODUCT`
+  (migration `product_custom_fields`, adds `Product.customFields Json`), wired the same
+  `mergeCustomFields`/`CustomFieldsEditor` machinery into the product create/update routes
+  and form, and gave the Admin "Custom fields" panel an entity-type selector (Patients/
+  Products) instead of being hardcoded to Patients.
+  Verified via live API (product created with a custom value, unknown-key rejected 400,
+  a partial update preserves the existing custom field, a non-`product:manage` role gets
+  403) and in-browser via Playwright (nav link, list renders, edit form pre-fills the
+  custom value, create round-trips a brand-new product with its custom field). 73/73 tests
+  still pass, including the existing patient-workflow integration test (no regression).
+  **Not translated**: the Products page itself is English-only (only its nav label picked
+  up French) — consistent with i18n's existing "partial coverage, chrome + Login + Settings"
+  scope; extending it is the same `t('key')` pattern already documented.
 
 ### Shipped this session (2026-07-19, part 14) — French translations: critical self-review pass
 - Asked for "a native speaker" to review the French. **I can't do that — I'm an AI, I have
@@ -360,8 +382,8 @@ for location-scoped writes (`76bbea3`).
 - [x] QR codes — **done this session**
 - [x] Keyboard shortcuts — **done this session** (global search command palette, Ctrl/Cmd+K)
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
-- [x] Custom fields — **done this session** (Patients only; Products need a product-management
-  UI to exist first)
+- [x] Custom fields — **done this session, extended to Products this session too** (Patients +
+  Products both supported now)
 - [x] i18n — **done this session** (English/French; chrome + Login + Settings translated,
   ~25 other pages still English-only — see "Shipped" for how to extend)
 

@@ -365,6 +365,9 @@ model Product {
   narcoticCounts NarcoticCount[]
   quarantines    QuarantineRecord[]
   stockTransfers StockTransfer[]
+  // Admin-defined custom fields (see CustomFieldDefinition) — key/value map,
+  // validated server-side against active definitions on every write.
+  customFields Json @default("{}")
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -1287,14 +1290,14 @@ model PerformanceReview {
 
 // ---------------------------------------------------------------------------
 // Custom fields — admin-defined extra fields on top of the fixed schema.
-// Scoped to Patient for now (the one entity with a working create/edit UI to
-// attach them to); the entityType enum is deliberately its own type so adding
-// a second entity later is a small, additive migration rather than a rework.
+// Started with Patient only (the one entity that had a working create/edit UI
+// to attach them to); Product followed once its own management UI existed.
 // Values live in the target model's own `customFields` Json column, validated
 // against active definitions on every write (see services/customFields.ts).
 // ---------------------------------------------------------------------------
 enum CustomFieldEntityType {
   PATIENT
+  PRODUCT
 }
 
 enum CustomFieldType {

@@ -7,6 +7,7 @@ import { OwnerDashboard } from './pages/OwnerDashboard';
 import { LocationDashboard } from './pages/LocationDashboard';
 import { Patients } from './pages/Patients';
 import { Inventory } from './pages/Inventory';
+import { Products } from './pages/Products';
 import { Prescriptions } from './pages/Prescriptions';
 import { Sales } from './pages/Sales';
 import { Messages } from './pages/Messages';
@@ -103,6 +104,16 @@ export default function App() {
           <ProtectedRoute permission="inventory:read">
             <Layout>
               <Inventory />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/products"
+        element={
+          <ProtectedRoute permission="inventory:read">
+            <Layout>
+              <Products />
             </Layout>
           </ProtectedRoute>
         }

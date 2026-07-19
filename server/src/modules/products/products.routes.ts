@@ -6,6 +6,7 @@ import { requireAnyPermission, requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../constants/permissions';
 import { asyncHandler, notFound } from '../../utils/httpError';
 import { recordAudit } from '../../services/audit';
+import { mergeCustomFields } from '../../services/customFields';
 
 const router = Router();
 router.use(authenticate);
@@ -31,6 +32,7 @@ const productSchema = z.object({
   isControlled: z.boolean().optional(),
   defaultPriceCents: z.number().int().min(0).optional(),
   interactionClasses: z.string().optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
 });
 
 const listQuery = z.object({
@@ -81,8 +83,9 @@ router.post(
   '/',
   requirePermission(PERMISSIONS.PRODUCT_MANAGE),
   asyncHandler(async (req, res) => {
-    const input = productSchema.parse(req.body);
-    const product = await prisma.product.create({ data: input });
+    const { customFields: customFieldsInput, ...rest } = productSchema.parse(req.body);
+    const customFields = await mergeCustomFields('PRODUCT', {}, customFieldsInput);
+    const product = await prisma.product.create({ data: { ...rest, customFields } });
     await recordAudit({ action: 'CREATE', entity: 'Product', entityId: product.id, req });
     res.status(201).json(product);
   }),
@@ -92,8 +95,11 @@ router.patch(
   '/:id',
   requirePermission(PERMISSIONS.PRODUCT_MANAGE),
   asyncHandler(async (req, res) => {
-    const input = productSchema.partial().parse(req.body);
-    const product = await prisma.product.update({ where: { id: req.params.id }, data: input });
+    const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw notFound('Product not found');
+    const { customFields: customFieldsInput, ...rest } = productSchema.partial().parse(req.body);
+    const customFields = await mergeCustomFields('PRODUCT', existing.customFields as Record<string, unknown>, customFieldsInput);
+    const product = await prisma.product.update({ where: { id: req.params.id }, data: { ...rest, customFields } });
     await recordAudit({ action: 'UPDATE', entity: 'Product', entityId: product.id, req });
     res.json(product);
   }),
