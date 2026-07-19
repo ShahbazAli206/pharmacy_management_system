@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (global search UI + keyboard shortcut shipped)
+**Last updated:** 2026-07-19 (PDF export shipped)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,22 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 10) — PDF export
+- **PDF export** for Finance (last buildable item off the Phase 4 export-formats gap; a real
+  QuickBooks/Sage export still needs their exact target format spec, which isn't something
+  to guess at). `GET /finance/expenses?format=pdf` (itemized report) and
+  `GET /finance/pl?format=pdf` (P&L statement). Used the established `pdfkit` library rather
+  than hand-rolling the PDF byte format — same reasoning as the QR code decision: a subtly
+  wrong from-scratch implementation risks a corrupt file that's hard to notice without a
+  dedicated check. Confirmed pdfkit added zero new npm audit findings (same 8 pre-existing
+  dev-only advisories as before, all in vitest/vite/autocannon, unrelated).
+  Verified past mere structural validity: fetched both PDFs live, confirmed `%PDF-`
+  header/`%%EOF` trailer, then round-tripped them through a PDF text extractor (temporarily
+  installed with `--no-save`, not part of the dependency tree) and confirmed the actual
+  report content is correct — line-item amounts reconcile with the printed total
+  ($700.60 + $8500.00 = $9200.60). Finance page gained "Export expenses PDF" and
+  "Download P&L PDF" buttons. 38/38 unit tests still pass.
 
 ### Shipped this session (2026-07-19, part 9) — global search command palette + keyboard shortcut
 - Discovered while scanning the "smaller roadmapped items" list: the Phase 7 `GET /search`
@@ -228,8 +244,8 @@ for location-scoped writes (`76bbea3`).
 - [x] **HR — performance reviews DONE** (`PerformanceReview` model + migration, `/reviews`
   create/mine/list/update/submit/acknowledge, Performance Reviews page). **HR module (spec
   §11) is now fully built.**
-- [x] **Financial — AP aging DONE** (`/finance/ap-aging` + Finance panel). **Cash-flow
-  forecast + budget variance DONE this session.** Still left: PDF/QuickBooks export.
+- [x] **Financial — AP aging, cash-flow forecast, budget variance, and PDF export all DONE.**
+  Still left: QuickBooks/Sage export formats (need their exact format spec to build correctly).
 
 ### 6. Smaller roadmapped items
 - [x] Dark mode / theming — **done this session**

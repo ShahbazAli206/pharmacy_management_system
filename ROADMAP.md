@@ -121,7 +121,17 @@ Legend: [x] done · [~] partial · [ ] not started
   panels plus a budget-setting form. Verified live (budget set → variance computed correctly
   against real expense data, including a UTC month-bucketing fix for negative-offset server
   timezones).
-- [ ] PDF / QuickBooks / Sage export formats; payroll remittance detail.
+- [x] **PDF export** — `GET /finance/expenses?format=pdf` (itemized expense report) and
+  `GET /finance/pl?format=pdf` (one-page P&L statement with expense-by-category breakdown),
+  using `pdfkit` (a mature, established library — not hand-rolled, since a subtly-wrong PDF
+  byte-stream implementation risks producing a corrupt file with no easy way to notice).
+  Finance page gained "Export expenses PDF" and "Download P&L PDF" buttons alongside the
+  existing CSV export. Verified beyond structural validity (`%PDF-` header, `%%EOF` trailer)
+  by extracting the actual text back out with a PDF parser and confirming the report content
+  is correct (line-item amounts reconcile with the printed total).
+- [ ] QuickBooks / Sage export formats; payroll remittance detail — these need the exact
+  target format spec (QBO/IIF layout, Sage's column schema) to build correctly; flagging
+  rather than guessing.
 
 ## PHASE 5 — Camera & Comms (Months 11–12)  ← COMPLETE (smoke-tested 23/23 vs live DB; client built)
 - [x] Camera registration + management (placement, IP, brand); health-check heartbeat + status; footage-view audit logging.

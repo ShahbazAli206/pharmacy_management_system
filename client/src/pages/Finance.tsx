@@ -67,21 +67,22 @@ export function Finance() {
     await load();
   };
 
-  const exportCsv = () => {
-    // Stream the CSV with the auth header via fetch, then trigger a download.
-    fetch(`${API_URL}/finance/expenses?format=csv`, {
-      headers: { Authorization: `Bearer ${tokenStore.access}` },
-    })
+  // Stream a CSV/PDF export with the auth header via fetch, then trigger a download.
+  const downloadExport = (path: string, filename: string) => {
+    fetch(`${API_URL}${path}`, { headers: { Authorization: `Bearer ${tokenStore.access}` } })
       .then((r) => r.blob())
       .then((blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'expenses.csv';
+        a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
       });
   };
+  const exportCsv = () => downloadExport('/finance/expenses?format=csv', 'expenses.csv');
+  const exportExpensesPdf = () => downloadExport('/finance/expenses?format=pdf', 'expenses.pdf');
+  const exportPlPdf = () => downloadExport('/finance/pl?format=pdf', 'profit-loss.pdf');
 
   const canWrite = can('finance:write');
   const hasLocation = !!user?.pharmacy;
@@ -109,9 +110,14 @@ export function Finance() {
           <h1>Finance</h1>
           <p className="muted">Profit & loss and expense management {isOwner && '· owner view'}</p>
         </div>
-        <button className="btn" onClick={exportCsv}>
-          Export expenses CSV
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={exportCsv}>
+            Export expenses CSV
+          </button>
+          <button className="btn" onClick={exportExpensesPdf}>
+            Export expenses PDF
+          </button>
+        </div>
       </header>
 
       {pl && (
@@ -133,6 +139,11 @@ export function Finance() {
           <div className="stat-card">
             <div className="stat-label">HST/GST collected</div>
             <div className="stat-value">{money(pl.taxCollectedCents)}</div>
+          </div>
+          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button className="btn btn-ghost" onClick={exportPlPdf}>
+              Download P&amp;L PDF
+            </button>
           </div>
         </div>
       )}

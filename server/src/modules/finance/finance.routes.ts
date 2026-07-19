@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { prisma } from '../../config/prisma';
 import { authenticate } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../constants/permissions';
 import { asyncHandler, badRequest, unauthorized } from '../../utils/httpError';
 import { recordAudit } from '../../services/audit';
 import { toCsv, centsToDollars } from '../../utils/csv';
+import { expensesPdfBuffer, plStatementPdfBuffer } from '../../utils/pdf';
 import * as expenses from './expenses.service';
 import * as finance from './finance.service';
 
@@ -49,7 +51,7 @@ router.get(
       to: s(req.query.to),
     });
 
-    // CSV export (?format=csv) — audited as an EXPORT event.
+    // CSV/PDF export — audited as an EXPORT event.
     if (req.query.format === 'csv') {
       await recordAudit({ action: 'EXPORT', entity: 'Expense', metadata: { count: list.length }, req });
       const rows = list.map((e) => ({
@@ -64,6 +66,24 @@ router.get(
       }));
       res.header('Content-Type', 'text/csv').header('Content-Disposition', 'attachment; filename="expenses.csv"');
       res.send(toCsv(rows));
+      return;
+    }
+    if (req.query.format === 'pdf') {
+      await recordAudit({ action: 'EXPORT', entity: 'Expense', metadata: { count: list.length, format: 'pdf' }, req });
+      const pdf = await expensesPdfBuffer(
+        list.map((e) => ({
+          incurredOn: e.incurredOn,
+          location: e.pharmacy.code,
+          category: e.category,
+          description: e.description,
+          vendor: e.vendor,
+          amountCents: e.amountCents,
+          taxCents: e.taxCents,
+          status: e.status,
+        })),
+      );
+      res.header('Content-Type', 'application/pdf').header('Content-Disposition', 'attachment; filename="expenses.pdf"');
+      res.send(pdf);
       return;
     }
     res.json(list);
@@ -119,7 +139,17 @@ router.get(
     if (!req.auth) throw unauthorized();
     const pharmacyId = s(req.query.pharmacyId) ?? req.auth.locationId;
     if (!pharmacyId) throw badRequest('pharmacyId is required');
-    res.json(await finance.profitAndLoss(req.auth, pharmacyId, s(req.query.from), s(req.query.to)));
+    const pl = await finance.profitAndLoss(req.auth, pharmacyId, s(req.query.from), s(req.query.to));
+
+    if (req.query.format === 'pdf') {
+      await recordAudit({ action: 'EXPORT', entity: 'PLReport', entityId: pharmacyId, metadata: { format: 'pdf' }, req });
+      const pharmacy = await prisma.pharmacy.findUnique({ where: { id: pharmacyId }, select: { name: true } });
+      const pdf = await plStatementPdfBuffer({ pharmacyName: pharmacy?.name ?? pharmacyId, ...pl });
+      res.header('Content-Type', 'application/pdf').header('Content-Disposition', 'attachment; filename="profit-loss.pdf"');
+      res.send(pdf);
+      return;
+    }
+    res.json(pl);
   }),
 );
 
