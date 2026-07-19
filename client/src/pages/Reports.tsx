@@ -157,7 +157,7 @@ export function Reports() {
 
         {result && result.forecast && (
           <>
-            <p className="muted">{t('methodLabel', { method: result.method })}</p>
+            <p className="muted">{t('methodLabel', { method: result.method ?? '' })}</p>
             <div className="table-wrap">
               <table className="table">
                 <thead>

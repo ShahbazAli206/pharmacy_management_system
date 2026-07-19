@@ -64,8 +64,8 @@ const en = {
   navAdministration: 'Administration',
   navSearch: 'Search',
   searchShortcutHint: 'Ctrl+K',
-  darkMode: '☾ Dark mode',
-  lightMode: '☀ Light mode',
+  darkMode: 'Dark mode',
+  lightMode: 'Light mode',
   signOut: 'Sign out',
 
   // Login
@@ -886,8 +886,8 @@ const fr: Record<keyof typeof en, string> = {
   navAdministration: 'Administration',
   navSearch: 'Rechercher',
   searchShortcutHint: 'Ctrl+K',
-  darkMode: '☾ Mode sombre',
-  lightMode: '☀ Mode clair',
+  darkMode: 'Mode sombre',
+  lightMode: 'Mode clair',
   signOut: 'Se déconnecter',
 
   loginTitle: 'PharmaSuite',

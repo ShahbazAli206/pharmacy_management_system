@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Activity, AlertTriangle, Bell, Building2, FileText, Plus, Users } from 'lucide-react';
 import { api, ApiError, tokenStore } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { StatCard } from '../components/StatCard';
 import { useI18n } from '../lib/i18n/I18nContext';
 import type { TranslationKey } from '../lib/i18n/translations';
 import type { SystemHealth, AuditEntry, CustomFieldDefinition } from '../lib/types';
@@ -62,37 +64,24 @@ export function Admin() {
 
       {health && (
         <div className="stat-grid">
-          <div className="stat-card">
-            <div className="stat-label">{t('colStatus')}</div>
-            <div className="stat-value" style={{ color: 'var(--ok)' }}>
-              {health.status}
-            </div>
-            <div className="stat-sub" style={{ color: 'var(--muted)' }}>
-              {t('uptimeNodeSub', { uptime: fmtUptime(health.uptimeSeconds), node: health.nodeVersion })}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statPharmacies')}</div>
-            <div className="stat-value">{health.counts.pharmacies}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statPatients')}</div>
-            <div className="stat-value">{health.counts.patients.toLocaleString()}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statPrescriptions')}</div>
-            <div className="stat-value">{health.counts.prescriptions.toLocaleString()}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statOpenAlerts')}</div>
-            <div className="stat-value" style={{ color: health.operational.openComplianceAlerts > 0 ? 'var(--warn)' : undefined }}>
-              {health.operational.openComplianceAlerts}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statPendingNotifications')}</div>
-            <div className="stat-value">{health.operational.pendingNotifications}</div>
-          </div>
+          <StatCard
+            icon={Activity}
+            label={t('colStatus')}
+            value={health.status}
+            valueColor="var(--ok)"
+            sub={t('uptimeNodeSub', { uptime: fmtUptime(health.uptimeSeconds), node: health.nodeVersion })}
+          />
+          <StatCard icon={Building2} accent="blue" label={t('statPharmacies')} value={String(health.counts.pharmacies)} />
+          <StatCard icon={Users} label={t('statPatients')} value={health.counts.patients.toLocaleString()} />
+          <StatCard icon={FileText} accent="purple" label={t('statPrescriptions')} value={health.counts.prescriptions.toLocaleString()} />
+          <StatCard
+            icon={AlertTriangle}
+            accent="rose"
+            label={t('statOpenAlerts')}
+            value={String(health.operational.openComplianceAlerts)}
+            valueColor={health.operational.openComplianceAlerts > 0 ? 'var(--warn)' : undefined}
+          />
+          <StatCard icon={Bell} accent="amber" label={t('statPendingNotifications')} value={String(health.operational.pendingNotifications)} />
         </div>
       )}
 
@@ -101,6 +90,7 @@ export function Admin() {
         <div className="toolbar">
           <input className="search" placeholder={t('newFlagKeyPlaceholder')} value={newFlag} onChange={(e) => setNewFlag(e.target.value)} />
           <button className="btn" onClick={addFlag}>
+            <Plus size={16} />
             {t('addFlagButton')}
           </button>
         </div>
@@ -592,6 +582,7 @@ function CustomFieldsPanel() {
           {t('requiredUiHintOnlyLabel')}
         </label>
         <button className="btn btn-primary" onClick={create} disabled={!valid || busy}>
+          {!busy && <Plus size={16} />}
           {busy ? t('addingEllipsis') : t('addFieldButton')}
         </button>
       </div>

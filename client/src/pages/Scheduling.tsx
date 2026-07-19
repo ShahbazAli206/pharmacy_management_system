@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../lib/i18n/I18nContext';
@@ -356,6 +357,7 @@ function AddShift({
           <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('notesPlaceholderCoveringLunch')} />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
+          {!busy && <Plus size={16} />}
           {busy ? t('schedulingEllipsis') : t('scheduleShiftButton')}
         </button>
       </div>

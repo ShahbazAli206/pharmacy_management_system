@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Bell, CheckCircle2, Clock, Send, XCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { StatCard } from '../components/StatCard';
 import { useI18n } from '../lib/i18n/I18nContext';
 
 // --- Types (inline; do not import from lib/types) ------------------------
@@ -172,31 +174,16 @@ export function Notifications() {
       )}
 
       <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-label">{t('statTotalInQueue')}</div>
-          <div className="stat-value">{stats.total}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">{t('statPending')}</div>
-          <div className="stat-value" style={{ color: 'var(--warn)' }}>
-            {stats.pending}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">{t('statSent')}</div>
-          <div className="stat-value" style={{ color: 'var(--ok)' }}>
-            {stats.sent}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">{t('statFailed')}</div>
-          <div
-            className="stat-value"
-            style={{ color: stats.failed > 0 ? 'var(--danger)' : undefined }}
-          >
-            {stats.failed}
-          </div>
-        </div>
+        <StatCard icon={Bell} accent="blue" label={t('statTotalInQueue')} value={String(stats.total)} />
+        <StatCard icon={Clock} accent="amber" label={t('statPending')} value={String(stats.pending)} valueColor="var(--warn)" />
+        <StatCard icon={CheckCircle2} label={t('statSent')} value={String(stats.sent)} valueColor="var(--ok)" />
+        <StatCard
+          icon={XCircle}
+          accent="rose"
+          label={t('statFailed')}
+          value={String(stats.failed)}
+          valueColor={stats.failed > 0 ? 'var(--danger)' : undefined}
+        />
       </div>
 
       {manage && (
@@ -211,6 +198,7 @@ export function Notifications() {
               onClick={generate}
               disabled={busy !== null || ownerNeedsLocation}
             >
+              <Bell size={16} />
               {busy === 'generate' ? t('generatingEllipsis') : t('generateRefillRemindersButton')}
             </button>
             <button
@@ -218,6 +206,7 @@ export function Notifications() {
               onClick={dispatch}
               disabled={busy !== null || ownerNeedsLocation}
             >
+              <Send size={16} />
               {busy === 'dispatch' ? t('dispatchingEllipsis') : t('dispatchPendingButton')}
             </button>
           </div>

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { DollarSign, Receipt, TrendingUp, Wallet } from 'lucide-react';
 import { api, ApiError, tokenStore } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { StatCard } from '../components/StatCard';
 import { useI18n } from '../lib/i18n/I18nContext';
+import { fetchLocations, type LocationOption } from '../lib/locations';
 import type { TranslationKey } from '../lib/i18n/translations';
 import type { BudgetVariance, CashFlowForecast, ExpenseRow, PLReport } from '../lib/types';
 
@@ -34,6 +37,8 @@ export function Finance() {
   const { user, can } = useAuth();
   const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [pharmacyId, setPharmacyId] = useState('');
   const [pl, setPl] = useState<PLReport | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [ap, setAp] = useState<ApAging | null>(null);
@@ -42,14 +47,28 @@ export function Finance() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!isOwner) return;
+    fetchLocations()
+      .then((opts) => {
+        setLocations(opts);
+        if (opts[0]) setPharmacyId(opts[0].id);
+      })
+      .catch(() => {});
+  }, [isOwner]);
+
+  const ready = !isOwner || !!pharmacyId;
+
   const load = useCallback(async () => {
+    if (!ready) return;
+    const q = isOwner && pharmacyId ? `?pharmacyId=${pharmacyId}` : '';
     try {
       const [plData, exp, apData, varianceData, cashFlowData] = await Promise.all([
-        api<PLReport>('/finance/pl').catch(() => null),
-        api<ExpenseRow[]>('/finance/expenses'),
-        api<ApAging>('/finance/ap-aging').catch(() => null),
-        api<BudgetVariance>('/finance/budget-variance').catch(() => null),
-        api<CashFlowForecast>('/finance/cash-flow-forecast').catch(() => null),
+        api<PLReport>(`/finance/pl${q}`).catch(() => null),
+        api<ExpenseRow[]>(`/finance/expenses${q}`),
+        api<ApAging>(`/finance/ap-aging${q}`).catch(() => null),
+        api<BudgetVariance>(`/finance/budget-variance${q}`).catch(() => null),
+        api<CashFlowForecast>(`/finance/cash-flow-forecast${q}`).catch(() => null),
       ]);
       setPl(plData);
       setExpenses(exp);
@@ -59,7 +78,7 @@ export function Finance() {
     } catch (e) {
       setError((e as Error).message);
     }
-  }, []);
+  }, [isOwner, pharmacyId, ready]);
 
   useEffect(() => {
     void load();
@@ -83,19 +102,20 @@ export function Finance() {
         URL.revokeObjectURL(url);
       });
   };
-  const exportCsv = () => downloadExport('/finance/expenses?format=csv', 'expenses.csv');
-  const exportExpensesPdf = () => downloadExport('/finance/expenses?format=pdf', 'expenses.pdf');
-  const exportPlPdf = () => downloadExport('/finance/pl?format=pdf', 'profit-loss.pdf');
+  const exportCsv = () => downloadExport(`/finance/expenses?format=csv${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'expenses.csv');
+  const exportExpensesPdf = () => downloadExport(`/finance/expenses?format=pdf${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'expenses.pdf');
+  const exportPlPdf = () => downloadExport(`/finance/pl?format=pdf${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'profit-loss.pdf');
 
   const canWrite = can('finance:write');
-  const hasLocation = !!user?.pharmacy;
+  const budgetPharmacyId = isOwner ? pharmacyId : user?.pharmacy?.id;
+  const hasLocation = !!budgetPharmacyId;
 
   const setBudget = async (category: string, month: string, amountCents: number) => {
-    if (!user?.pharmacy) return;
+    if (!budgetPharmacyId) return;
     try {
       await api('/finance/budgets', {
         method: 'PUT',
-        body: JSON.stringify({ pharmacyId: user.pharmacy.id, category, month, amountCents }),
+        body: JSON.stringify({ pharmacyId: budgetPharmacyId, category, month, amountCents }),
       });
       setNotice(t('budgetSavedNotice'));
       await load();
@@ -104,6 +124,7 @@ export function Finance() {
     }
   };
 
+  if (isOwner && !ready) return <div className="alert">{t('selectLocationPlaceholder')}</div>;
   if (error) return <div className="alert alert-error">{error}</div>;
 
   return (
@@ -123,26 +144,33 @@ export function Finance() {
         </div>
       </header>
 
+      {isOwner && (
+        <div className="toolbar">
+          <label className="field" style={{ minWidth: 260 }}>
+            {t('locationLabel')}
+            <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
+              {locations.length === 0 && <option value="">{t('loading')}</option>}
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name} ({l.code})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
       {pl && (
         <div className="stat-grid">
-          <div className="stat-card">
-            <div className="stat-label">{t('statRevenueMtd')}</div>
-            <div className="stat-value">{money(pl.revenueCents)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statExpensesMtd')}</div>
-            <div className="stat-value">{money(pl.totalExpensesCents)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statNetIncome')}</div>
-            <div className="stat-value" style={{ color: pl.netIncomeCents >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
-              {money(pl.netIncomeCents)}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">{t('statHstGstCollected')}</div>
-            <div className="stat-value">{money(pl.taxCollectedCents)}</div>
-          </div>
+          <StatCard icon={DollarSign} accent="blue" label={t('statRevenueMtd')} value={money(pl.revenueCents)} />
+          <StatCard icon={Wallet} accent="amber" label={t('statExpensesMtd')} value={money(pl.totalExpensesCents)} />
+          <StatCard
+            icon={TrendingUp}
+            label={t('statNetIncome')}
+            value={money(pl.netIncomeCents)}
+            valueColor={pl.netIncomeCents >= 0 ? 'var(--ok)' : 'var(--danger)'}
+          />
+          <StatCard icon={Receipt} accent="purple" label={t('statHstGstCollected')} value={money(pl.taxCollectedCents)} />
           <div className="stat-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button className="btn btn-ghost" onClick={exportPlPdf}>
               {t('downloadPlPdfButton')}
@@ -171,13 +199,13 @@ export function Finance() {
                       ? 'var(--danger)'
                       : 'var(--warn)';
               return (
-                <div className="stat-card" key={key}>
-                  <div className="stat-label">{t(labelKey)}</div>
-                  <div className="stat-value" style={{ color }}>
-                    {money(b.amountCents)}
-                  </div>
-                  <div className="stat-sub">{t('itemsCountLabel', { count: b.count })}</div>
-                </div>
+                <StatCard
+                  key={key}
+                  label={t(labelKey)}
+                  value={money(b.amountCents)}
+                  valueColor={color}
+                  sub={t('itemsCountLabel', { count: b.count })}
+                />
               );
             })}
           </div>

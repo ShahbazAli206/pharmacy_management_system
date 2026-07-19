@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, ClipboardCheck, FileWarning, RefreshCw } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { StatCard } from '../components/StatCard';
 import { useI18n } from '../lib/i18n/I18nContext';
 import { fetchLocations, type LocationOption } from '../lib/locations';
 import type { ChecklistItem, ComplianceAlert, ComplianceScore, LicenseWarnings } from '../lib/types';
@@ -98,6 +100,7 @@ export function Compliance() {
         </div>
         {can('compliance:write') && (
           <button className="btn" onClick={generate} disabled={busy}>
+            <RefreshCw size={16} />
             {busy ? t('generatingEllipsis') : t('generateChecklistButton')}
           </button>
         )}
@@ -121,24 +124,16 @@ export function Compliance() {
 
       <div className="stat-grid">
         {score && (
-          <div className="stat-card">
-            <div className="stat-label">{t('complianceScoreLabel')}</div>
-            <div className="stat-value" style={{ color: bandColor[score.band] }}>
-              {score.score}
-            </div>
-            <div className="stat-sub" style={{ color: bandColor[score.band] }}>
-              {score.band} · {t('tasksCount', { completed: score.completed, total: score.total })}
-            </div>
-          </div>
+          <StatCard
+            icon={ClipboardCheck}
+            label={t('complianceScoreLabel')}
+            value={String(score.score)}
+            valueColor={bandColor[score.band]}
+            sub={`${score.band} · ${t('tasksCount', { completed: score.completed, total: score.total })}`}
+          />
         )}
-        <div className="stat-card">
-          <div className="stat-label">{t('openAlertsLabel')}</div>
-          <div className="stat-value">{alerts.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">{t('licensePermitWarningsLabel')}</div>
-          <div className="stat-value">{licenseRows.length}</div>
-        </div>
+        <StatCard icon={AlertTriangle} accent="rose" label={t('openAlertsLabel')} value={String(alerts.length)} />
+        <StatCard icon={FileWarning} accent="amber" label={t('licensePermitWarningsLabel')} value={String(licenseRows.length)} />
       </div>
 
       {alerts.length > 0 && (

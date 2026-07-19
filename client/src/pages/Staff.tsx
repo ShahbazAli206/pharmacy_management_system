@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../lib/i18n/I18nContext';
@@ -315,6 +316,7 @@ function AddStaff({
           <input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder={t('licenseNumberPlaceholder')} />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
+          {!busy && <Plus size={16} />}
           {busy ? t('creatingEllipsis') : t('addStaffButton')}
         </button>
       </div>

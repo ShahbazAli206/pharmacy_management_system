@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, Boxes, DollarSign, FileText, Users } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { StatCard } from '../components/StatCard';
 import { useI18n } from '../lib/i18n/I18nContext';
 import { fetchLocations, type LocationOption } from '../lib/locations';
 import type { LocationOverview } from '../lib/types';
@@ -78,12 +80,12 @@ export function LocationDashboard() {
       )}
 
       <div className="stat-grid">
-        <Stat label={t('statPatients')} value={data.patientCount.toLocaleString()} />
-        <Stat label={t('statStaff')} value={data.staffCount.toString()} />
-        <Stat label={t('statSalesToday')} value={currency(data.salesToday)} />
-        <Stat label={t('statPrescriptionsToday')} value={data.prescriptionsToday.toString()} />
-        <Stat label={t('statReorderAlerts')} value={data.reorderAlerts.toString()} sub={t('statReorderAlertsSub')} />
-        <Stat label={t('statActivePrescriptions')} value={data.refillsDueToday.toString()} sub={t('statActivePrescriptionsSub')} />
+        <StatCard icon={Users} label={t('statPatients')} value={data.patientCount.toLocaleString()} />
+        <StatCard icon={Users} accent="blue" label={t('statStaff')} value={data.staffCount.toString()} />
+        <StatCard icon={DollarSign} accent="amber" label={t('statSalesToday')} value={currency(data.salesToday)} />
+        <StatCard icon={FileText} accent="purple" label={t('statPrescriptionsToday')} value={data.prescriptionsToday.toString()} />
+        <StatCard icon={Boxes} accent="cyan" label={t('statReorderAlerts')} value={data.reorderAlerts.toString()} sub={t('statReorderAlertsSub')} />
+        <StatCard icon={AlertTriangle} accent="rose" label={t('statActivePrescriptions')} value={data.refillsDueToday.toString()} sub={t('statActivePrescriptionsSub')} />
       </div>
 
       <section className="panel">
@@ -96,16 +98,6 @@ export function LocationDashboard() {
           {data.complianceChecklist.total === 0 && ` — ${t('noTasksThisMonth')}`}
         </p>
       </section>
-    </div>
-  );
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="stat-card">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      {sub && <div className="stat-sub">{sub}</div>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../lib/i18n/I18nContext';
@@ -64,6 +65,7 @@ export function Patients() {
         </div>
         {canWrite && (
           <button className="btn btn-primary" onClick={() => setEditing('new')}>
+            <Plus size={16} />
             {t('newPatientButton')}
           </button>
         )}

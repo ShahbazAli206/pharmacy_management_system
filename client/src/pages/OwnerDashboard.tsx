@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { AlertTriangle, Building2, DollarSign, FileText, Users } from 'lucide-react';
 import { api } from '../lib/api';
+import { StatCard } from '../components/StatCard';
 import { useI18n } from '../lib/i18n/I18nContext';
 import type { OwnerOverview } from '../lib/types';
 
@@ -28,12 +30,12 @@ export function OwnerDashboard() {
       </header>
 
       <div className="stat-grid">
-        <Stat label={t('statLocations')} value={`${data.totals.activeLocations}/${data.totals.locations}`} sub={t('statLocationsSub')} />
-        <Stat label={t('statStaff')} value={data.totals.staff.toString()} />
-        <Stat label={t('statPatients')} value={data.totals.patients.toLocaleString()} />
-        <Stat label={t('statRevenueToday')} value={currency(data.totals.revenueToday)} sub={t('statRevenueTodaySub')} />
-        <Stat label={t('statPrescriptionsToday')} value={data.totals.prescriptionsToday.toString()} />
-        <Stat label={t('statPendingReports')} value={data.pendingPartnerReports.toString()} />
+        <StatCard icon={Building2} accent="blue" label={t('statLocations')} value={`${data.totals.activeLocations}/${data.totals.locations}`} sub={t('statLocationsSub')} />
+        <StatCard icon={Users} label={t('statStaff')} value={data.totals.staff.toString()} />
+        <StatCard icon={Users} label={t('statPatients')} value={data.totals.patients.toLocaleString()} />
+        <StatCard icon={DollarSign} accent="amber" label={t('statRevenueToday')} value={currency(data.totals.revenueToday)} sub={t('statRevenueTodaySub')} />
+        <StatCard icon={FileText} accent="purple" label={t('statPrescriptionsToday')} value={data.totals.prescriptionsToday.toString()} />
+        <StatCard icon={AlertTriangle} accent="rose" label={t('statPendingReports')} value={data.pendingPartnerReports.toString()} />
       </div>
 
       <section className="panel">
@@ -84,16 +86,6 @@ export function OwnerDashboard() {
           </table>
         </div>
       </section>
-    </div>
-  );
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="stat-card">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      {sub && <div className="stat-sub">{sub}</div>}
     </div>
   );
 }

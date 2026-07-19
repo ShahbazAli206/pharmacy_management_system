@@ -1,7 +1,7 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-20 (fixed more owner-scope bugs — Compliance, My Location — plus a layout
-scroll bug; demo data + visual redesign requested, scoping in progress)
+**Last updated:** 2026-07-20 (rich demo data for 3 locations + icon/colour visual pass shipped;
+Finance owner-scope bug + a Sales.tsx build-breaking bug found and fixed during verification)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -49,6 +49,61 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-20, part 25) — rich demo data + icon/colour visual pass
+- **Demo data** (`server/prisma/seedDemo.ts`, new, standalone, never touches the baseline
+  `seed.ts`/CI seed): rich, cross-linked data for **Toronto, Vancouver, and Calgary** — 7 new
+  staff users (Vancouver/Calgary previously had zero), 10 more catalog products (incl. 2 more
+  controlled substances), ~30 patients with allergies/conditions, full inventory with a
+  deliberate expiry/low-stock spread, ~35 prescriptions + dispensing records, ~75 POS sales
+  over the last 30 days, a coherent narcotics ledger + one balanced count per location
+  (deliberately never an unresolved discrepancy — that's an app-layer invariant with lock/alert
+  side effects a raw-DB seed shouldn't trigger), 7 days of compliance history + alerts, a drug
+  recall + quarantine records, expenses/budgets/partner ownership for the two new locations,
+  stock transfers, messages/notifications, cameras, and a full slate of HR records
+  (attendance/shifts/incidents/training/reviews). Idempotent — verified by running it twice in
+  a row and confirming row counts didn't double (33 patients = 3 pre-existing + 30 seeded, not
+  60+). New `db:seed:demo` npm script; run manually with `DATABASE_URL` pointed at the
+  superuser connection, same as the baseline seed. New logins (password `ChangeMe123!`):
+  `partner2@pharmacy.ca`/`pic2@pharmacy.ca` (Vancouver), `partner3@pharmacy.ca`/
+  `pic3@pharmacy.ca` (Calgary).
+- **Icon + colour visual pass**: added `lucide-react`. Refactored the sidebar nav
+  (`Layout.tsx`) from a static 24-item hand-written list to a config-driven array with an icon
+  next to every label — verified the refactor preserves every existing `can()` permission
+  check exactly (including the two OR-combination cases for Messages/Audit Log) by cataloguing
+  all of them before implementing. Added a shared `StatCard` component (icon + coloured accent
+  chip: blue/purple/amber/rose/cyan by data type) and migrated it onto Owner Overview, My
+  Location, POS reconciliation, Admin, Finance, Compliance, and Notifications. Added a handful
+  of new CSS accent tokens (light + dark-mode variants) and `Plus` icons on primary create
+  buttons (Patients, Products, Staff, Scheduling). Decoupled the dark/light-mode toggle's
+  emoji glyphs from the `en`/`fr` translation strings, replaced with real `Moon`/`Sun` icon
+  components.
+- **A major process gap discovered and fixed**: `client/tsconfig.json` has `"files": []` and
+  only project references (`tsconfig.app.json`/`tsconfig.node.json`) — meaning every
+  `npx tsc --noEmit` run **this entire session** (client-side) was silently checking **zero
+  files** and reporting false "clean" results. The correct invocation is
+  `npx tsc -b tsconfig.app.json --noEmit` (build mode, follows references). Running that for
+  real surfaced two genuine bugs the fake-clean checks had missed:
+  1. **A build-breaking duplicate identifier in `Sales.tsx`**: the new `Receipt` icon import
+     collided with the pre-existing local `Receipt` component (the post-sale receipt view),
+     crashing the entire app to a blank white screen on every route. Caught by a Playwright
+     verification pass (first sign anything was wrong, since the fake typecheck said "clean").
+     Fixed by aliasing the icon import to `ReceiptIcon`.
+  2. **A real type error in `Reports.tsx`** (from an earlier i18n session): `result.method` is
+     optional but was passed where `t()`'s interpolation expects a definite `string | number`.
+     Fixed with a `?? ''` fallback.
+  A full forced rebuild (`tsc -b tsconfig.app.json --noEmit --force`) now reports zero errors
+  across the entire client.
+- **Finance page had the same owner-location-picker gap** as the Inventory/Compliance/My
+  Location bugs fixed earlier this session — 3 of its 5 endpoints (`/finance/pl`,
+  `/finance/budget-variance`, `/finance/cash-flow-forecast`) require a `pharmacyId` for the
+  owner role and were 400ing repeatedly (caught by the Playwright verification pass: "Finance
+  page fired six 400 responses"). Fixed with the same established pattern — a location picker
+  populated via `fetchLocations()`, threaded through all 5 finance endpoints plus the CSV/PDF
+  export links and the budget-setting form. Verified live: zero 400s after the fix, P&L stat
+  cards show real non-zero data per location, switching locations correctly reloads scoped
+  data, and the non-owner (location-scoped) path is unaffected.
+  73/73 tests still pass throughout; the corrected full-client typecheck is clean.
 
 ### Shipped this session (2026-07-20, part 24) — more owner-scope bugs + a layout scroll bug
 - User reported (via screenshots) three pages looking broken/empty: **My Location** ("No
@@ -587,6 +642,15 @@ Typecheck: `npm run typecheck`.
   for why). To restore a dump created via the Admin console's "Create backup now":
   `pg_restore --clean --if-exists --dbname="<DIRECT_URL, superuser>" path/to/backup.dump`.
   Test against a scratch database first, never directly against production.
+- **`client/tsconfig.json` has `"files": []` and only project references** (to
+  `tsconfig.app.json`/`tsconfig.node.json`) — plain `npx tsc --noEmit` in `client/` silently
+  checks **zero files** and always reports clean, even with real type errors present. **Always
+  use `npx tsc -b tsconfig.app.json --noEmit`** (build mode; add `--force` for a full recheck
+  ignoring the incremental cache) to actually typecheck the client. This bit an entire prior
+  session's worth of "clean" typecheck results before being caught by browser verification.
+- **New demo-data seed**: `cd server && npm run db:seed:demo` (after the baseline `db:seed`)
+  populates rich, cross-linked demo data for Toronto/Vancouver/Calgary — see "Shipped" below.
+  Same superuser `DATABASE_URL` requirement as `db:seed`. Safe to re-run (idempotent).
 
 ---
 
@@ -599,10 +663,18 @@ this session"). Pick one of the remaining directions, in rough priority:
    and performance reviews are all shipped. No HR gaps remain.
 2. **i18n — DONE.** Every page is now fully bilingual (English/French). No pages remain
    English-only.
-3. **Financial extras** — cash-flow forecast, budget variance, PDF/QuickBooks export.
-4. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
+3. **Demo data — DONE for 3 locations.** Toronto/Vancouver/Calgary now have rich, cross-linked
+   data (`npm run db:seed:demo`). Extending the same treatment to more of the other 13
+   pharmacies (currently bare shells) is a natural next step if broader demo coverage is
+   wanted.
+4. **Visual pass — DONE (icons + palette refresh).** Sidebar nav icons, `StatCard` component
+   with coloured accents on 7 dashboard/summary pages, `Plus` icons on a few primary create
+   buttons. Extending `StatCard` to the remaining stat-card pages (Narcotics, Documents' import
+   results) would be a small, low-risk follow-on if further visual consistency is wanted.
+5. **Financial extras** — QuickBooks/Sage export formats (need their exact target format spec).
+6. **Wire a real external provider** behind an existing stub (S3 / Twilio / SendGrid / OCR /
    insurance / payments) — *blocked on credentials*.
-5. **Go-live hardening** — penetration/security review (`/security-review`), managed Postgres,
+7. **Go-live hardening** — penetration/security review (`/security-review`), managed Postgres,
    CI/CD, backup/DR, secret rotation; then the compliance/privacy/pharmacist sign-off gates.
 
 Testing infra in place: `npm test` (35 unit) · `npm run test:integration` (35) ·

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DollarSign, Plus, Receipt as ReceiptIcon } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { StatCard } from '../components/StatCard';
 import { useI18n } from '../lib/i18n/I18nContext';
 import type {
   DailySummary,
@@ -303,6 +305,7 @@ function SellTab({
         )}
 
         <button className="btn btn-ghost" onClick={addCustomLine} disabled={!ready} style={{ marginTop: 12 }}>
+          <Plus size={16} />
           {t('addCustomLineButton')}
         </button>
       </section>
@@ -607,10 +610,10 @@ function ReconcileTab({
       </div>
 
       <div className="stat-grid">
-        <Stat label={t('statTransactions')} value={String(summary.transactionCount)} />
-        <Stat label={t('statSubtotal')} value={money(summary.subtotalCents)} />
-        <Stat label={t('statTaxCollected')} value={money(summary.taxCents)} />
-        <Stat label={t('statTotalTakings')} value={money(summary.totalCents)} />
+        <StatCard icon={ReceiptIcon} label={t('statTransactions')} value={String(summary.transactionCount)} />
+        <StatCard icon={DollarSign} accent="blue" label={t('statSubtotal')} value={money(summary.subtotalCents)} />
+        <StatCard icon={DollarSign} accent="amber" label={t('statTaxCollected')} value={money(summary.taxCents)} />
+        <StatCard icon={DollarSign} accent="purple" label={t('statTotalTakings')} value={money(summary.totalCents)} />
       </div>
 
       <section className="panel">
@@ -666,14 +669,5 @@ function ReconcileTab({
         )}
       </section>
     </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="stat-card">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-    </div>
   );
 }
