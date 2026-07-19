@@ -95,6 +95,9 @@ export const PERMISSIONS = {
   // HR — performance reviews (Phase 12)
   REVIEW_READ: 'review:read',
   REVIEW_MANAGE: 'review:manage',
+
+  // Custom fields (admin-defined extra fields)
+  CUSTOM_FIELD_MANAGE: 'custom_field:manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -151,6 +154,7 @@ export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   [PERMISSIONS.TRAINING_MANAGE]: 'Log and edit training/CE records on behalf of team members',
   [PERMISSIONS.REVIEW_READ]: "View the team's performance reviews",
   [PERMISSIONS.REVIEW_MANAGE]: 'Draft, submit, and edit performance reviews for team members',
+  [PERMISSIONS.CUSTOM_FIELD_MANAGE]: 'Define and manage custom fields (owner-only, applies system-wide)',
 };
 
 /**

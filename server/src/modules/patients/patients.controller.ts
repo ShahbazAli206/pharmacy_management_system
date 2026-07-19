@@ -23,6 +23,7 @@ const createSchema = z.object({
   emergencyContact: z.string().nullable().optional(),
   smsOptIn: z.boolean().optional(),
   emailOptIn: z.boolean().optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
 });
 
 const updateSchema = createSchema.partial();

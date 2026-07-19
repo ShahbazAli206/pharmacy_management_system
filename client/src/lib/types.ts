@@ -84,9 +84,28 @@ export interface Patient {
   insurancePlan: string | null;
   phone: string | null;
   email: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  emergencyContact?: string | null;
+  smsOptIn?: boolean;
+  emailOptIn?: boolean;
+  customFields: Record<string, unknown>;
   allergies: Array<{ id: string; substance: string; severity: string; reaction: string | null }>;
   conditions: Array<{ id: string; name: string; diagnosis: string | null }>;
   isActive: boolean;
+}
+
+export interface CustomFieldDefinition {
+  id: string;
+  entityType: 'PATIENT';
+  key: string;
+  label: string;
+  fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT';
+  options: string | null; // JSON-encoded string[] when fieldType is SELECT
+  required: boolean;
+  active: boolean;
+  sortOrder: number;
 }
 
 export interface Paginated<T> {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, tokenStore } from '../lib/api';
+import { api, ApiError, tokenStore } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { SystemHealth, AuditEntry } from '../lib/types';
+import type { SystemHealth, AuditEntry, CustomFieldDefinition } from '../lib/types';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
 
@@ -134,6 +134,7 @@ export function Admin() {
       {can('role:simulate') && <RoleSimulator />}
       <ActivityTimeline />
       <BarcodeTool />
+      {can('custom_field:manage') && <CustomFieldsPanel />}
       <BackupsPanel />
     </div>
   );
@@ -422,6 +423,156 @@ function BackupsPanel() {
             ))}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+}
+
+const FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'] as const;
+
+function CustomFieldsPanel() {
+  const [defs, setDefs] = useState<CustomFieldDefinition[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [key, setKey] = useState('');
+  const [label, setLabel] = useState('');
+  const [fieldType, setFieldType] = useState<(typeof FIELD_TYPES)[number]>('TEXT');
+  const [options, setOptions] = useState('');
+  const [required, setRequired] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setDefs(await api<CustomFieldDefinition[]>('/custom-fields/definitions?entityType=PATIENT'));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const valid = /^[a-z][a-z0-9_]*$/.test(key) && label.trim() && (fieldType !== 'SELECT' || options.trim());
+
+  const create = async () => {
+    if (!valid) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api('/custom-fields/definitions', {
+        method: 'POST',
+        body: JSON.stringify({
+          entityType: 'PATIENT',
+          key,
+          label: label.trim(),
+          fieldType,
+          ...(fieldType === 'SELECT'
+            ? { options: options.split(',').map((o) => o.trim()).filter(Boolean) }
+            : {}),
+          required,
+        }),
+      });
+      setKey('');
+      setLabel('');
+      setOptions('');
+      setRequired(false);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to create custom field');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleActive = async (def: CustomFieldDefinition) => {
+    await api(`/custom-fields/definitions/${def.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ active: !def.active }),
+    });
+    await load();
+  };
+
+  return (
+    <section className="panel">
+      <h2>Custom fields (Patients)</h2>
+      <p className="muted" style={{ marginBottom: 12 }}>
+        Extra fields shown on the patient create/edit form — no code change needed.
+      </p>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Label</th>
+              <th>Type</th>
+              <th>Required</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {(!defs || defs.length === 0) && (
+              <tr>
+                <td colSpan={6} className="muted">
+                  {defs ? 'No custom fields defined yet.' : 'Loading…'}
+                </td>
+              </tr>
+            )}
+            {defs?.map((d) => (
+              <tr key={d.id}>
+                <td className="mono">{d.key}</td>
+                <td>{d.label}</td>
+                <td>{d.fieldType}</td>
+                <td>{d.required ? 'Yes' : 'No'}</td>
+                <td>
+                  <span className={`badge ${d.active ? 'badge-ok' : 'badge-muted'}`}>{d.active ? 'Active' : 'Inactive'}</span>
+                </td>
+                <td>
+                  <button className="btn btn-ghost" onClick={() => toggleActive(d)}>
+                    {d.active ? 'Deactivate' : 'Activate'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="form-grid" style={{ marginTop: 16 }}>
+        <label className="field">
+          Key
+          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="referred_by" />
+        </label>
+        <label className="field">
+          Label
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Referred by" />
+        </label>
+        <label className="field">
+          Type
+          <select value={fieldType} onChange={(e) => setFieldType(e.target.value as typeof fieldType)}>
+            {FIELD_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+        {fieldType === 'SELECT' && (
+          <label className="field">
+            Options (comma-separated)
+            <input value={options} onChange={(e) => setOptions(e.target.value)} placeholder="Walk-in, Referral, Website" />
+          </label>
+        )}
+        <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+          Required (UI hint only)
+        </label>
+        <button className="btn btn-primary" onClick={create} disabled={!valid || busy}>
+          {busy ? 'Adding…' : 'Add field'}
+        </button>
       </div>
     </section>
   );

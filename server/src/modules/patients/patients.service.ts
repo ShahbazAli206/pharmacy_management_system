@@ -4,6 +4,7 @@ import { AuthContext } from '../../types/express';
 import { assertLocationAccess, resolveLocationScope } from '../../middleware/rbac';
 import { decryptNullable, encryptNullable } from '../../utils/crypto';
 import { notFound, badRequest } from '../../utils/httpError';
+import { mergeCustomFields } from '../../services/customFields';
 
 export interface PatientInput {
   pharmacyId?: string;
@@ -22,6 +23,7 @@ export interface PatientInput {
   emergencyContact?: string | null;
   smsOptIn?: boolean;
   emailOptIn?: boolean;
+  customFields?: Record<string, unknown>;
 }
 
 /** Shape returned to clients — decrypts PII for authorized readers. */
@@ -44,6 +46,7 @@ function toDto(p: Prisma.PatientGetPayload<{ include: { allergies: true; conditi
     emergencyContact: p.emergencyContact,
     smsOptIn: p.smsOptIn,
     emailOptIn: p.emailOptIn,
+    customFields: p.customFields as Record<string, unknown>,
     allergies: p.allergies,
     conditions: p.conditions,
     isActive: p.isActive,
@@ -101,6 +104,8 @@ export async function createPatient(auth: AuthContext, input: PatientInput) {
   if (!pharmacyId) throw badRequest('pharmacyId is required');
   assertLocationAccess(auth, pharmacyId);
 
+  const customFields = await mergeCustomFields('PATIENT', {}, input.customFields);
+
   const created = await prisma.patient.create({
     data: {
       pharmacyId,
@@ -119,6 +124,7 @@ export async function createPatient(auth: AuthContext, input: PatientInput) {
       emergencyContact: input.emergencyContact ?? null,
       smsOptIn: input.smsOptIn ?? false,
       emailOptIn: input.emailOptIn ?? false,
+      customFields: customFields as Prisma.InputJsonObject,
     },
     include: { allergies: true, conditions: true },
   });
@@ -194,6 +200,12 @@ export async function updatePatient(auth: AuthContext, id: string, input: Partia
   if (!existing) throw notFound('Patient not found');
   assertLocationAccess(auth, existing.pharmacyId);
 
+  const customFields = await mergeCustomFields(
+    'PATIENT',
+    existing.customFields as Record<string, unknown>,
+    input.customFields,
+  );
+
   const updated = await prisma.patient.update({
     where: { id },
     data: {
@@ -214,6 +226,7 @@ export async function updatePatient(auth: AuthContext, id: string, input: Partia
       emergencyContact: input.emergencyContact,
       smsOptIn: input.smsOptIn,
       emailOptIn: input.emailOptIn,
+      customFields: customFields as Prisma.InputJsonObject,
     },
     include: { allergies: true, conditions: true },
   });

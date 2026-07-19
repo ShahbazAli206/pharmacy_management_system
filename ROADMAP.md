@@ -233,10 +233,30 @@ Legend: [x] done · [~] partial · [ ] not started
   button, Ctrl+K, Escape, click-outside, and result-click-navigates all confirmed, zero
   console errors for a location-scoped user.
 
+- [x] **Custom fields (Patients).** `CustomFieldDefinition` model + migration (`custom_fields`,
+  also adds `Patient.customFields Json`) — admin-defined extra fields (TEXT/NUMBER/DATE/
+  BOOLEAN/SELECT), owner-managed via a new Admin console panel, rendered dynamically on the
+  patient form via a generic `CustomFieldsEditor` component driven entirely by server
+  metadata. Scoped to Patients only (not Products) because Products have no client edit UI
+  at all to attach fields to — building that would have meant inventing an unrelated
+  product-management page under the "custom fields" umbrella; the `entityType` enum is its
+  own type specifically so adding a second entity later is a small additive migration.
+  Values are validated server-side against active definitions on every write (unknown keys
+  rejected, types coerced/checked, SELECT options enforced); `required` is a UI hint only,
+  not retroactively enforced against existing records. **This also surfaced and fixed a
+  bigger pre-existing gap: the Patients page had no working create/edit form at all** (the
+  "+ New patient" button was a permanently-disabled stub) — built a real create/edit flow
+  since the custom-fields feature needed a genuine place to live. Verified via live API
+  (valid/invalid SELECT value, unknown-key rejection, partial-merge update preserving other
+  fields, deactivate-then-reject-write, non-owner 403 on definition management) and
+  in-browser via Playwright (both the patient form and the Admin definitions panel, zero
+  console errors, full create→edit round-trip with the custom value correctly pre-filled).
+
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
-- Bull/Redis job queue; WebRTC/HLS streaming; i18n/theme manager; custom-fields.
+- Bull/Redis job queue; WebRTC/HLS streaming; i18n/theme manager; custom fields for
+  entities beyond Patients (Products, once a product-management UI exists).
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv

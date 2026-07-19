@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (on-demand DB backups shipped)
+**Last updated:** 2026-07-19 (custom fields shipped, plus a working patient create/edit form)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,35 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 12) — custom fields (Patients) + a real patient form
+- **Custom fields** — a best-guess scope since this backlog item had no explicit spec.
+  `CustomFieldDefinition` model + migration (also adds `Patient.customFields Json`):
+  TEXT/NUMBER/DATE/BOOLEAN/SELECT field types, owner-managed (new `custom_field:manage`
+  permission, owner-only — 52 permissions now seeded, was 51). Scoped to **Patients only**,
+  not Products — Products have no client edit UI at all, so building product custom fields
+  would have meant inventing an unrelated product-management page just to have somewhere to
+  put them. New `server/src/services/customFields.ts` (shared definition CRUD + value
+  validation/merge logic) and `server/src/modules/customFields` (definitions API). New
+  client `CustomFieldsEditor` component renders whatever active definitions exist — adding a
+  field in the Admin console makes it appear on the patient form with zero client code
+  change.
+  **Bigger discovery while wiring this up: the Patients page had no working create/edit form
+  at all** — "+ New patient" was a permanently-disabled stub, and there was no way to edit an
+  existing patient either. Since the custom-fields feature needed a real form to attach to,
+  built the actual create/edit flow (in-page panel, not a separate route, matching every
+  other page's pattern this session).
+  Verified thoroughly via live API: valid SELECT/TEXT values persist correctly, an invalid
+  SELECT option 400s with the allowed list, an unknown custom-field key 400s (typos surface
+  immediately rather than silently vanishing), a partial update preserves the other stored
+  custom field (merge, not replace), deactivating a definition makes further writes to it
+  400 (existing stored values aren't deleted, just frozen), and a non-owner gets 403 trying
+  to manage definitions. Verified in-browser via Playwright: the patient form renders both a
+  SELECT and a TEXT custom field driven by live server metadata, create→list→edit round-trips
+  with the custom value correctly pre-filled, and the Admin panel's add/deactivate flow works
+  — zero console errors in both passes. 38 unit + 35 integration tests (73/73) still pass,
+  including the existing "pharmacist registers a patient" workflow test (no regression to
+  patient creation).
 
 ### Shipped this session (2026-07-19, part 11) — on-demand DB backups (Admin console)
 - **Backup creation/listing/download** — the last safely-buildable item off the "smaller
@@ -274,7 +303,9 @@ for location-scoped writes (`76bbea3`).
 - [x] QR codes — **done this session**
 - [x] Keyboard shortcuts — **done this session** (global search command palette, Ctrl/Cmd+K)
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
-- [ ] i18n · custom fields
+- [x] Custom fields — **done this session** (Patients only; Products need a product-management
+  UI to exist first)
+- [ ] i18n
 
 ---
 

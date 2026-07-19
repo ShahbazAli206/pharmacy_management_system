@@ -231,6 +231,9 @@ model Patient {
   emergencyContact   String?
   smsOptIn           Boolean            @default(false)
   emailOptIn         Boolean            @default(false)
+  // Admin-defined custom fields (see CustomFieldDefinition) — key/value map,
+  // validated server-side against active definitions on every write.
+  customFields       Json               @default("{}")
   allergies          Allergy[]
   conditions         ChronicCondition[]
   prescriptions      Prescription[]
@@ -1280,4 +1283,41 @@ model PerformanceReview {
 
   @@index([userId])
   @@index([pharmacyId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Custom fields — admin-defined extra fields on top of the fixed schema.
+// Scoped to Patient for now (the one entity with a working create/edit UI to
+// attach them to); the entityType enum is deliberately its own type so adding
+// a second entity later is a small, additive migration rather than a rework.
+// Values live in the target model's own `customFields` Json column, validated
+// against active definitions on every write (see services/customFields.ts).
+// ---------------------------------------------------------------------------
+enum CustomFieldEntityType {
+  PATIENT
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+}
+
+model CustomFieldDefinition {
+  id         String                @id @default(uuid())
+  entityType CustomFieldEntityType
+  key        String // machine key, e.g. "referred_by" — immutable after creation
+  label      String
+  fieldType  CustomFieldType       @default(TEXT)
+  options    String? // JSON-encoded string[]; only meaningful for SELECT
+  required   Boolean               @default(false) // UI hint only — not retroactively enforced on existing records
+  active     Boolean               @default(true)
+  sortOrder  Int                   @default(0)
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@unique([entityType, key])
+  @@index([entityType, active])
 }
