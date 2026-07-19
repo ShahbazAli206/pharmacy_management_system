@@ -105,7 +105,8 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] P&L per location + consolidated (owner); partner profit distribution by configurable ownership basis points.
 - [x] CRA-oriented HST/GST summary (tax collected, input tax credits, net remittance).
 - [x] CSV export (audited as EXPORT); client Finance page with P&L tiles + expense approval.
-- [ ] Cash-flow forecast, AP aging, budget variance reports.
+- [x] **AP (accounts-payable) aging report** — approved-but-unpaid expenses bucketed current/1–30/31–60/61–90/90+ days overdue (`GET /finance/ap-aging`; Finance page panel). Verified live.
+- [ ] Cash-flow forecast, budget variance reports.
 - [ ] PDF / QuickBooks / Sage export formats; payroll remittance detail.
 
 ## PHASE 5 — Camera & Comms (Months 11–12)  ← COMPLETE (smoke-tested 23/23 vs live DB; client built)

@@ -168,3 +168,59 @@ export async function taxSummary(auth: AuthContext, requestedPharmacyId?: string
 }
 
 export const EXPENSE_CATEGORIES = Object.values(ExpenseCategory);
+
+/**
+ * Accounts-payable aging (spec §8.2). Payables = approved-but-unpaid expenses
+ * (status APPROVED). Each is aged by its due date (falling back to incurredOn),
+ * bucketed current / 1–30 / 31–60 / 61–90 / 90+ days overdue. Owner may scope to
+ * one location or see all; non-owners see their own.
+ */
+export async function apAging(auth: AuthContext, requestedPharmacyId?: string, now = new Date()) {
+  const pharmacyId = isOwner(auth) ? requestedPharmacyId : auth.locationId ?? undefined;
+  if (pharmacyId) assertLocationAccess(auth, pharmacyId);
+
+  const payables = await prisma.expense.findMany({
+    where: { status: 'APPROVED', ...(pharmacyId ? { pharmacyId } : {}) },
+    include: { pharmacy: { select: { code: true, name: true } } },
+    orderBy: { dueDate: 'asc' },
+  });
+
+  const buckets = {
+    current: { count: 0, amountCents: 0 },
+    d1_30: { count: 0, amountCents: 0 },
+    d31_60: { count: 0, amountCents: 0 },
+    d61_90: { count: 0, amountCents: 0 },
+    d90plus: { count: 0, amountCents: 0 },
+  };
+
+  const items = payables.map((e) => {
+    const owed = e.amountCents + e.taxCents;
+    const due = e.dueDate ?? e.incurredOn;
+    const overdueDays = Math.floor((now.getTime() - due.getTime()) / 86_400_000);
+    const bucket: keyof typeof buckets =
+      overdueDays <= 0 ? 'current'
+      : overdueDays <= 30 ? 'd1_30'
+      : overdueDays <= 60 ? 'd31_60'
+      : overdueDays <= 90 ? 'd61_90'
+      : 'd90plus';
+    buckets[bucket].count += 1;
+    buckets[bucket].amountCents += owed;
+    return {
+      id: e.id,
+      vendor: e.vendor,
+      description: e.description,
+      category: e.category,
+      pharmacy: e.pharmacy,
+      dueDate: due,
+      overdueDays: Math.max(0, overdueDays),
+      amountCents: owed,
+    };
+  });
+
+  return {
+    buckets,
+    totalOwedCents: items.reduce((s, i) => s + i.amountCents, 0),
+    count: items.length,
+    items,
+  };
+}

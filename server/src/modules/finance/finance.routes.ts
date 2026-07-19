@@ -167,4 +167,14 @@ router.get(
   }),
 );
 
+// Accounts-payable aging (approved-but-unpaid expenses, bucketed by overdue days).
+router.get(
+  '/ap-aging',
+  requirePermission(PERMISSIONS.FINANCE_READ),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    res.json(await finance.apAging(req.auth, s(req.query.pharmacyId)));
+  }),
+);
+
 export default router;

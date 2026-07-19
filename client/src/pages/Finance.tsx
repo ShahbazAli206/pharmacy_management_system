@@ -8,21 +8,38 @@ const money = (cents: number) =>
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
 
+type ApBucketKey = 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90plus';
+const AP_BUCKETS: { key: ApBucketKey; label: string }[] = [
+  { key: 'current', label: 'Current' },
+  { key: 'd1_30', label: '1–30 days' },
+  { key: 'd31_60', label: '31–60 days' },
+  { key: 'd61_90', label: '61–90 days' },
+  { key: 'd90plus', label: '90+ days' },
+];
+interface ApAging {
+  buckets: Record<ApBucketKey, { count: number; amountCents: number }>;
+  totalOwedCents: number;
+  count: number;
+}
+
 export function Finance() {
   const { user, can } = useAuth();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const [pl, setPl] = useState<PLReport | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [ap, setAp] = useState<ApAging | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [plData, exp] = await Promise.all([
+      const [plData, exp, apData] = await Promise.all([
         api<PLReport>('/finance/pl').catch(() => null),
         api<ExpenseRow[]>('/finance/expenses'),
+        api<ApAging>('/finance/ap-aging').catch(() => null),
       ]);
       setPl(plData);
       setExpenses(exp);
+      setAp(apData);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -88,6 +105,39 @@ export function Finance() {
             <div className="stat-value">{money(pl.taxCollectedCents)}</div>
           </div>
         </div>
+      )}
+
+      {ap && ap.count > 0 && (
+        <section className="panel">
+          <div className="page-head row">
+            <h2 style={{ margin: 0 }}>Accounts payable aging</h2>
+            <span className="muted">
+              {ap.count} unpaid · {money(ap.totalOwedCents)} owed
+            </span>
+          </div>
+          <div className="stat-grid">
+            {AP_BUCKETS.map(({ key, label }) => {
+              const b = ap.buckets[key];
+              const color =
+                b.amountCents === 0
+                  ? undefined
+                  : key === 'current'
+                    ? 'var(--ok)'
+                    : key === 'd90plus'
+                      ? 'var(--danger)'
+                      : 'var(--warn)';
+              return (
+                <div className="stat-card" key={key}>
+                  <div className="stat-label">{label}</div>
+                  <div className="stat-value" style={{ color }}>
+                    {money(b.amountCents)}
+                  </div>
+                  <div className="stat-sub">{b.count} item(s)</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       <section className="panel">
