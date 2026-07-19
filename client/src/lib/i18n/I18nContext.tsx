@@ -10,7 +10,8 @@ interface I18nState {
   /** Whether the current locale is the user's own override vs. the system default. */
   isOverride: boolean;
   clearOverride: () => void;
-  t: (key: TranslationKey) => string;
+  /** `{{name}}` placeholders in the dictionary string are replaced from `vars`. */
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nState | undefined>(undefined);
@@ -63,7 +64,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const t = useCallback((key: TranslationKey) => TRANSLATIONS[locale][key] ?? TRANSLATIONS.en[key] ?? key, [locale]);
+  const t = useCallback(
+    (key: TranslationKey, vars?: Record<string, string | number>) => {
+      const raw = TRANSLATIONS[locale][key] ?? TRANSLATIONS.en[key] ?? key;
+      if (!vars) return raw;
+      return raw.replace(/\{\{(\w+)\}\}/g, (match, name) => (name in vars ? String(vars[name]) : match));
+    },
+    [locale],
+  );
 
   const value = useMemo(
     () => ({ locale, setLocale, isOverride: override !== null, clearOverride, t }),

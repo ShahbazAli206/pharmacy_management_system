@@ -281,12 +281,21 @@ Legend: [x] done · [~] partial · [ ] not started
   translated, switching back to EN leaves no French leftovers, zero console errors beyond the
   expected pre-login 401 from the best-effort system-default fetch.
 
+- [x] **i18n coverage extended**: Owner Dashboard, Location Dashboard, Patients, and Products
+  are now fully translated (headings, stat labels, table columns, forms, notices), on top of
+  the chrome/Login/Settings slice from the first i18n pass. Added lightweight `{{var}}`
+  interpolation to `t()` (e.g. `t('pageOf', { page, totalPages })`,
+  `t('tasksCompleteCount', { completed, total })`) rather than fragmenting sentences into
+  disconnected word-by-word keys, which reads badly once French word order differs from
+  English. Verified in-browser via Playwright across all four pages, including the
+  interpolated strings rendering correctly ("2/14 tâches terminées"). 73/73 tests still pass.
+
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
 - Bull/Redis job queue; WebRTC/HLS streaming; theme manager; i18n coverage for the
-  remaining pages beyond the chrome/Login/Settings slice already translated (the new
-  Products page's nav label is translated; its form/table content is not).
+  remaining ~20 pages beyond the eight now translated (chrome, Login, Settings, Owner
+  Dashboard, Location Dashboard, Patients, Products).
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv

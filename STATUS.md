@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (Product Catalog UI shipped, closing the Product custom-fields gap)
+**Last updated:** 2026-07-19 (i18n coverage extended to 4 more pages)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,23 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 16) — i18n coverage extended (4 more pages)
+- Continued the i18n work from part 13/14: fully translated **Owner Dashboard, Location
+  Dashboard, Patients, and Products** (headings, stat labels, table columns, forms, empty
+  states, success/error notices) — 8 pages now covered in total alongside the chrome/Login/
+  Settings slice.
+  Added lightweight `{{var}}` interpolation to `t()` (`client/src/lib/i18n/I18nContext.tsx`)
+  rather than continuing to fragment sentences into disconnected word-order-dependent keys —
+  needed for natural pagination ("Page {{page}} of {{totalPages}}") and count strings
+  ("{{completed}}/{{total}} tasks complete") once French word order stopped matching
+  English's. TypeScript's `Record<keyof typeof en, string>` constraint on the French
+  dictionary caught any missing key at compile time — a real safety net for this kind of
+  mechanical, easy-to-typo expansion.
+  Verified in-browser via Playwright across all four pages: full French rendering including
+  the interpolated strings ("2/14 tâches terminées"), zero console errors beyond the
+  expected pre-login settings fetch. 73/73 tests still pass (client-only change).
+  ~20 pages remain English-only; extending coverage is the same established pattern.
 
 ### Shipped this session (2026-07-19, part 15) — Product Catalog UI + Product custom fields
 - Re-scanned ROADMAP/STATUS for the next concrete step and picked the one genuine gap left
@@ -384,8 +401,9 @@ for location-scoped writes (`76bbea3`).
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
 - [x] Custom fields — **done this session, extended to Products this session too** (Patients +
   Products both supported now)
-- [x] i18n — **done this session** (English/French; chrome + Login + Settings translated,
-  ~25 other pages still English-only — see "Shipped" for how to extend)
+- [x] i18n — **done this session, extended further this session too** (English/French; chrome
+  + Login + Settings + Owner/Location dashboards + Patients + Products now translated,
+  ~20 other pages still English-only — see "Shipped" for how to extend)
 
 ---
 

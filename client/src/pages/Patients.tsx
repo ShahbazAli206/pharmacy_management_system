@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 import { CustomFieldsEditor } from '../components/CustomFieldsEditor';
 import type { CustomFieldDefinition, Paginated, Patient } from '../lib/types';
 
@@ -14,6 +15,7 @@ const GENDERS = ['MALE', 'FEMALE', 'OTHER', 'UNDISCLOSED'] as const;
 
 export function Patients() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const canWrite = can('patient:write');
 
@@ -57,12 +59,12 @@ export function Patients() {
     <div>
       <header className="page-head row">
         <div>
-          <h1>Patients</h1>
-          <p className="muted">{data ? `${data.total} record(s)` : ' '}</p>
+          <h1>{t('navPatients')}</h1>
+          <p className="muted">{data ? t('recordsCount', { count: data.total }) : ' '}</p>
         </div>
         {canWrite && (
           <button className="btn btn-primary" onClick={() => setEditing('new')}>
-            + New patient
+            {t('newPatientButton')}
           </button>
         )}
       </header>
@@ -100,12 +102,12 @@ export function Patients() {
       >
         <input
           className="search"
-          placeholder="Search by name…"
+          placeholder={t('searchByNamePlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <button className="btn" type="submit">
-          Search
+          {t('navSearch')}
         </button>
       </form>
 
@@ -114,11 +116,11 @@ export function Patients() {
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>DOB</th>
-                <th>Gender</th>
-                <th>Health card</th>
-                <th>Allergies</th>
+                <th>{t('colName')}</th>
+                <th>{t('colDob')}</th>
+                <th>{t('colGender')}</th>
+                <th>{t('colHealthCard')}</th>
+                <th>{t('colAllergies')}</th>
                 {canWrite && <th></th>}
               </tr>
             </thead>
@@ -126,14 +128,14 @@ export function Patients() {
               {loading && (
                 <tr>
                   <td colSpan={canWrite ? 6 : 5} className="muted">
-                    Loading…
+                    {t('loading')}
                   </td>
                 </tr>
               )}
               {!loading && data?.items.length === 0 && (
                 <tr>
                   <td colSpan={canWrite ? 6 : 5} className="muted">
-                    No patients yet.
+                    {t('noPatientsYet')}
                   </td>
                 </tr>
               )}
@@ -154,7 +156,7 @@ export function Patients() {
                     {canWrite && (
                       <td>
                         <button className="btn btn-ghost" onClick={() => setEditing(p)}>
-                          Edit
+                          {t('edit')}
                         </button>
                       </td>
                     )}
@@ -166,13 +168,11 @@ export function Patients() {
 
         <div className="pager">
           <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            Previous
+            {t('previous')}
           </button>
-          <span className="muted">
-            Page {page} of {totalPages}
-          </span>
+          <span className="muted">{t('pageOf', { page, totalPages })}</span>
           <button className="btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-            Next
+            {t('next')}
           </button>
         </div>
       </section>
@@ -197,6 +197,7 @@ function PatientForm({
   onCancel: () => void;
   onError: (m: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [pharmacyId, setPharmacyId] = useState('');
   const [firstName, setFirstName] = useState(patient?.firstName ?? '');
   const [lastName, setLastName] = useState(patient?.lastName ?? '');
@@ -229,13 +230,13 @@ function PatientForm({
       };
       if (patient) {
         await api(`/patients/${patient.id}`, { method: 'PATCH', body: JSON.stringify(body) });
-        onSaved('Patient updated.');
+        onSaved(t('patientUpdatedNotice'));
       } else {
         await api('/patients', { method: 'POST', body: JSON.stringify(body) });
-        onSaved('Patient created.');
+        onSaved(t('patientCreatedNotice'));
       }
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to save patient');
+      onError(e instanceof ApiError ? e.message : t('failedToSavePatient'));
     } finally {
       setBusy(false);
     }
@@ -243,13 +244,13 @@ function PatientForm({
 
   return (
     <section className="panel">
-      <h2>{patient ? 'Edit patient' : 'New patient'}</h2>
+      <h2>{patient ? t('editPatientHeading') : t('newPatientHeading')}</h2>
       <div className="form-grid">
         {needsLocation && (
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.code})
@@ -259,19 +260,19 @@ function PatientForm({
           </label>
         )}
         <label className="field">
-          First name
+          {t('firstNameLabel')}
           <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         </label>
         <label className="field">
-          Last name
+          {t('lastNameLabel')}
           <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </label>
         <label className="field">
-          Date of birth
+          {t('dobLabel')}
           <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
         </label>
         <label className="field">
-          Gender
+          {t('genderLabel')}
           <select value={gender} onChange={(e) => setGender(e.target.value as typeof gender)}>
             {GENDERS.map((g) => (
               <option key={g} value={g}>
@@ -281,15 +282,15 @@ function PatientForm({
           </select>
         </label>
         <label className="field">
-          Phone (optional)
+          {t('phoneOptionalLabel')}
           <input value={phone} onChange={(e) => setPhone(e.target.value)} />
         </label>
         <label className="field">
-          Email (optional)
+          {t('emailOptionalLabel')}
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="field">
-          Health card (optional)
+          {t('healthCardOptionalLabel')}
           <input value={healthCard} onChange={(e) => setHealthCard(e.target.value)} />
         </label>
 
@@ -301,10 +302,10 @@ function PatientForm({
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
-            {busy ? 'Saving…' : patient ? 'Save changes' : 'Create patient'}
+            {busy ? t('saving') : patient ? t('saveChangesButton') : t('createPatientButton')}
           </button>
           <button className="btn btn-ghost" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t('cancel')}
           </button>
         </div>
       </div>

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { LocationOverview } from '../lib/types';
 
 const currency = (n: number) =>
   new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(n);
 
 export function LocationDashboard() {
+  const { t } = useI18n();
   const [data, setData] = useState<LocationOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +18,7 @@ export function LocationDashboard() {
   }, []);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!data) return <div className="muted">Loading location…</div>;
+  if (!data) return <div className="muted">{t('loadingLocationDashboard')}</div>;
 
   const checklistPct =
     data.complianceChecklist.total === 0
@@ -33,22 +35,22 @@ export function LocationDashboard() {
       </header>
 
       <div className="stat-grid">
-        <Stat label="Patients" value={data.patientCount.toLocaleString()} />
-        <Stat label="Staff" value={data.staffCount.toString()} />
-        <Stat label="Sales today" value={currency(data.salesToday)} />
-        <Stat label="Prescriptions today" value={data.prescriptionsToday.toString()} />
-        <Stat label="Reorder alerts" value={data.reorderAlerts.toString()} sub="at/under threshold" />
-        <Stat label="Active prescriptions" value={data.refillsDueToday.toString()} sub="refillable" />
+        <Stat label={t('statPatients')} value={data.patientCount.toLocaleString()} />
+        <Stat label={t('statStaff')} value={data.staffCount.toString()} />
+        <Stat label={t('statSalesToday')} value={currency(data.salesToday)} />
+        <Stat label={t('statPrescriptionsToday')} value={data.prescriptionsToday.toString()} />
+        <Stat label={t('statReorderAlerts')} value={data.reorderAlerts.toString()} sub={t('statReorderAlertsSub')} />
+        <Stat label={t('statActivePrescriptions')} value={data.refillsDueToday.toString()} sub={t('statActivePrescriptionsSub')} />
       </div>
 
       <section className="panel">
-        <h2>Compliance checklist</h2>
+        <h2>{t('complianceChecklistHeading')}</h2>
         <div className="progress">
           <div className="progress-bar" style={{ width: `${checklistPct}%` }} />
         </div>
         <p className="muted">
-          {data.complianceChecklist.completed}/{data.complianceChecklist.total} tasks complete
-          {data.complianceChecklist.total === 0 && ' — no tasks generated this month yet'}
+          {t('tasksCompleteCount', { completed: data.complianceChecklist.completed, total: data.complianceChecklist.total })}
+          {data.complianceChecklist.total === 0 && ` — ${t('noTasksThisMonth')}`}
         </p>
       </section>
     </div>

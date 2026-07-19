@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { OwnerOverview } from '../lib/types';
 
 const currency = (n: number) =>
   new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(n);
 
 export function OwnerDashboard() {
+  const { t } = useI18n();
   const [data, setData] = useState<OwnerOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,38 +18,38 @@ export function OwnerDashboard() {
   }, []);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!data) return <div className="muted">Loading overview…</div>;
+  if (!data) return <div className="muted">{t('loadingOverview')}</div>;
 
   return (
     <div>
       <header className="page-head">
-        <h1>Owner Overview</h1>
-        <p className="muted">Consolidated across all locations</p>
+        <h1>{t('navOwnerOverview')}</h1>
+        <p className="muted">{t('ownerOverviewSubtitle')}</p>
       </header>
 
       <div className="stat-grid">
-        <Stat label="Locations" value={`${data.totals.activeLocations}/${data.totals.locations}`} sub="active" />
-        <Stat label="Staff" value={data.totals.staff.toString()} />
-        <Stat label="Patients" value={data.totals.patients.toLocaleString()} />
-        <Stat label="Revenue today" value={currency(data.totals.revenueToday)} sub="across all locations" />
-        <Stat label="Prescriptions today" value={data.totals.prescriptionsToday.toString()} />
-        <Stat label="Pending reports" value={data.pendingPartnerReports.toString()} />
+        <Stat label={t('statLocations')} value={`${data.totals.activeLocations}/${data.totals.locations}`} sub={t('statLocationsSub')} />
+        <Stat label={t('statStaff')} value={data.totals.staff.toString()} />
+        <Stat label={t('statPatients')} value={data.totals.patients.toLocaleString()} />
+        <Stat label={t('statRevenueToday')} value={currency(data.totals.revenueToday)} sub={t('statRevenueTodaySub')} />
+        <Stat label={t('statPrescriptionsToday')} value={data.totals.prescriptionsToday.toString()} />
+        <Stat label={t('statPendingReports')} value={data.pendingPartnerReports.toString()} />
       </div>
 
       <section className="panel">
-        <h2>Locations</h2>
+        <h2>{t('statLocations')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Code</th>
-                <th>Name</th>
-                <th>Province</th>
-                <th>Status</th>
-                <th className="num">Staff</th>
-                <th className="num">Patients</th>
-                <th>Alerts</th>
-                <th>Compliance</th>
+                <th>{t('colCode')}</th>
+                <th>{t('colName')}</th>
+                <th>{t('colProvince')}</th>
+                <th>{t('colStatus')}</th>
+                <th className="num">{t('statStaff')}</th>
+                <th className="num">{t('statPatients')}</th>
+                <th>{t('colAlerts')}</th>
+                <th>{t('navCompliance')}</th>
               </tr>
             </thead>
             <tbody>
