@@ -144,7 +144,10 @@ for location-scoped writes (`76bbea3`).
 - [ ] PDF / QuickBooks / Sage export formats
 
 ### 3. Production readiness
-- [ ] Canadian-residency hosting (AWS ca-central-1 / Azure Canada), TLS 1.3, CI/CD
+- [x] **CI/CD — DONE.** `.github/workflows/ci.yml`: server job (Postgres service container,
+  migrate deploy, seed, typecheck, unit + integration tests) and client job (typecheck,
+  build), on every push/PR to `main`. Verified green on GitHub Actions.
+- [ ] Canadian-residency hosting (AWS ca-central-1 / Azure Canada), TLS 1.3
 - [ ] Rotate secrets before prod: `pharmacy_app` DB password, JWT secrets, `FIELD_ENCRYPTION_KEY`
 - [ ] Backup / point-in-time recovery / DR runbook
 - [ ] Managed PostgreSQL (replace the local portable instance)
