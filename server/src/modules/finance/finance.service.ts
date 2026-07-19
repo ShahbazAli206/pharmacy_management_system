@@ -169,6 +169,144 @@ export async function taxSummary(auth: AuthContext, requestedPharmacyId?: string
 
 export const EXPENSE_CATEGORIES = Object.values(ExpenseCategory);
 
+const monthKey = (d: Date) => d.toISOString().slice(0, 7); // "YYYY-MM"
+// UTC throughout — avoids drifting a UTC-parsed input date ("2026-07-01" -> UTC
+// midnight) into the prior month when reconstructed via local getFullYear/getMonth
+// on a server running in a negative UTC-offset timezone.
+const monthStart = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+
+/** Upsert a location's monthly budget for one category. */
+export async function setBudget(auth: AuthContext, pharmacyId: string, category: string, month: string, amountCents: number) {
+  assertLocationAccess(auth, pharmacyId);
+  const monthDate = monthStart(new Date(month));
+
+  return prisma.budget.upsert({
+    where: { pharmacyId_category_month: { pharmacyId, category: category as never, month: monthDate } },
+    update: { amountCents },
+    create: { pharmacyId, category: category as never, month: monthDate, amountCents },
+  });
+}
+
+/** List a location's budgets, optionally scoped to a month range. */
+export async function listBudgets(auth: AuthContext, pharmacyId: string, from?: string, to?: string) {
+  assertLocationAccess(auth, pharmacyId);
+  return prisma.budget.findMany({
+    where: {
+      pharmacyId,
+      ...(from || to
+        ? { month: { ...(from ? { gte: monthStart(new Date(from)) } : {}), ...(to ? { lte: monthStart(new Date(to)) } : {}) } }
+        : {}),
+    },
+    orderBy: [{ month: 'asc' }, { category: 'asc' }],
+  });
+}
+
+/**
+ * Budget vs. actual variance for a single month. Actual = approved/paid expenses
+ * incurred within the month, grouped by category (same accrual rule as P&L).
+ */
+export async function budgetVariance(auth: AuthContext, pharmacyId: string, month?: string) {
+  assertLocationAccess(auth, pharmacyId);
+  const monthDate = monthStart(month ? new Date(month) : new Date());
+  const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  const [budgets, expenses] = await Promise.all([
+    prisma.budget.findMany({ where: { pharmacyId, month: monthDate } }),
+    prisma.expense.findMany({
+      where: { pharmacyId, status: { in: ['APPROVED', 'PAID'] }, incurredOn: { gte: monthDate, lte: monthEnd } },
+      select: { category: true, amountCents: true },
+    }),
+  ]);
+
+  const actualByCategory: Record<string, number> = {};
+  for (const e of expenses) actualByCategory[e.category] = (actualByCategory[e.category] ?? 0) + e.amountCents;
+
+  const categories = new Set([...budgets.map((b) => b.category), ...Object.keys(actualByCategory)]);
+  const lines = [...categories].map((category) => {
+    const budgetedCents = budgets.find((b) => b.category === category)?.amountCents ?? 0;
+    const actualCents = actualByCategory[category] ?? 0;
+    const varianceCents = actualCents - budgetedCents;
+    return {
+      category,
+      budgetedCents,
+      actualCents,
+      varianceCents,
+      variancePct: budgetedCents === 0 ? null : Math.round((varianceCents / budgetedCents) * 1000) / 10,
+    };
+  });
+
+  return {
+    pharmacyId,
+    month: monthKey(monthDate),
+    lines: lines.sort((a, b) => a.category.localeCompare(b.category)),
+    totals: {
+      budgetedCents: lines.reduce((s, l) => s + l.budgetedCents, 0),
+      actualCents: lines.reduce((s, l) => s + l.actualCents, 0),
+      varianceCents: lines.reduce((s, l) => s + l.varianceCents, 0),
+    },
+  };
+}
+
+/**
+ * Cash-flow forecast: monthly net cash flow (revenue minus paid-out expenses)
+ * history over the trailing window, projected `horizon` months ahead using the
+ * same moving-average + linear-trend method as the sales forecast (Phase 10) —
+ * deterministic and dependency-free.
+ */
+export async function cashFlowForecast(auth: AuthContext, pharmacyId: string, months = 6, horizon = 3) {
+  assertLocationAccess(auth, pharmacyId);
+  const now = new Date();
+  const windowStart = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+
+  const [sales, expenses] = await Promise.all([
+    prisma.sale.findMany({
+      where: { pharmacyId, createdAt: { gte: windowStart } },
+      select: { createdAt: true, totalCents: true },
+    }),
+    prisma.expense.findMany({
+      where: { pharmacyId, status: { in: ['APPROVED', 'PAID'] }, incurredOn: { gte: windowStart } },
+      select: { incurredOn: true, amountCents: true, taxCents: true },
+    }),
+  ]);
+
+  const revenueByMonth = new Map<string, number>();
+  for (const s of sales) revenueByMonth.set(monthKey(s.createdAt), (revenueByMonth.get(monthKey(s.createdAt)) ?? 0) + s.totalCents);
+  const expenseByMonth = new Map<string, number>();
+  for (const e of expenses) {
+    const k = monthKey(e.incurredOn);
+    expenseByMonth.set(k, (expenseByMonth.get(k) ?? 0) + e.amountCents + e.taxCents);
+  }
+
+  const history = [];
+  for (let i = 0; i < months; i++) {
+    const d = new Date(windowStart.getFullYear(), windowStart.getMonth() + i, 1);
+    const k = monthKey(d);
+    const revenueCents = revenueByMonth.get(k) ?? 0;
+    const expensesCents = expenseByMonth.get(k) ?? 0;
+    history.push({ month: k, revenueCents, expensesCents, netCashFlowCents: revenueCents - expensesCents });
+  }
+
+  const values = history.map((h) => h.netCashFlowCents);
+  const n = values.length;
+  const avg = n === 0 ? 0 : Math.round(values.reduce((a, b) => a + b, 0) / n);
+  const meanX = (n - 1) / 2;
+  let num = 0;
+  let den = 0;
+  values.forEach((y, i) => {
+    num += (i - meanX) * (y - avg);
+    den += (i - meanX) ** 2;
+  });
+  const slope = den === 0 ? 0 : num / den;
+
+  const forecast = [];
+  for (let i = 1; i <= horizon; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    forecast.push({ month: monthKey(d), netCashFlowCents: Math.round(avg + slope * (n - 1 + i)) });
+  }
+
+  return { pharmacyId, history, forecast, method: `moving-average(${months}mo) + linear trend` };
+}
+
 /**
  * Accounts-payable aging (spec §8.2). Payables = approved-but-unpaid expenses
  * (status APPROVED). Each is aged by its due date (falling back to incurredOn),

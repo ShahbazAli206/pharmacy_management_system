@@ -106,7 +106,14 @@ Legend: [x] done · [~] partial · [ ] not started
 - [x] CRA-oriented HST/GST summary (tax collected, input tax credits, net remittance).
 - [x] CSV export (audited as EXPORT); client Finance page with P&L tiles + expense approval.
 - [x] **AP (accounts-payable) aging report** — approved-but-unpaid expenses bucketed current/1–30/31–60/61–90/90+ days overdue (`GET /finance/ap-aging`; Finance page panel). Verified live.
-- [ ] Cash-flow forecast, budget variance reports.
+- [x] **Budget variance report** — monthly budget-vs-actual by expense category (`PUT/GET
+  /finance/budgets`, `GET /finance/budget-variance`; reuses the existing `Budget` model, no
+  migration needed). **Cash-flow forecast** — monthly net cash flow (revenue minus paid-out
+  expenses) history + 3-month projection via the same moving-average + linear-trend method as
+  the Phase-10 sales forecast (`GET /finance/cash-flow-forecast`). Finance page gained both
+  panels plus a budget-setting form. Verified live (budget set → variance computed correctly
+  against real expense data, including a UTC month-bucketing fix for negative-offset server
+  timezones).
 - [ ] PDF / QuickBooks / Sage export formats; payroll remittance detail.
 
 ## PHASE 5 — Camera & Comms (Months 11–12)  ← COMPLETE (smoke-tested 23/23 vs live DB; client built)

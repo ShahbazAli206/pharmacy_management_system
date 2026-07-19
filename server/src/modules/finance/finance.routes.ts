@@ -177,4 +177,58 @@ router.get(
   }),
 );
 
+// ---- Budgets & variance ----
+const budgetSchema = z.object({
+  pharmacyId: z.string().uuid(),
+  category: z.enum(CATEGORIES),
+  month: z.string(),
+  amountCents: z.number().int().min(0),
+});
+
+router.put(
+  '/budgets',
+  requirePermission(PERMISSIONS.FINANCE_WRITE),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    const input = budgetSchema.parse(req.body);
+    const budget = await finance.setBudget(req.auth, input.pharmacyId, input.category, input.month, input.amountCents);
+    await recordAudit({ action: 'UPDATE', entity: 'Budget', entityId: budget.id, req });
+    res.json(budget);
+  }),
+);
+
+router.get(
+  '/budgets',
+  requirePermission(PERMISSIONS.FINANCE_READ),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    const pharmacyId = s(req.query.pharmacyId) ?? req.auth.locationId;
+    if (!pharmacyId) throw badRequest('pharmacyId is required');
+    res.json(await finance.listBudgets(req.auth, pharmacyId, s(req.query.from), s(req.query.to)));
+  }),
+);
+
+router.get(
+  '/budget-variance',
+  requirePermission(PERMISSIONS.FINANCE_READ),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    const pharmacyId = s(req.query.pharmacyId) ?? req.auth.locationId;
+    if (!pharmacyId) throw badRequest('pharmacyId is required');
+    res.json(await finance.budgetVariance(req.auth, pharmacyId, s(req.query.month)));
+  }),
+);
+
+// ---- Cash-flow forecast ----
+router.get(
+  '/cash-flow-forecast',
+  requirePermission(PERMISSIONS.FINANCE_READ),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    const pharmacyId = s(req.query.pharmacyId) ?? req.auth.locationId;
+    if (!pharmacyId) throw badRequest('pharmacyId is required');
+    res.json(await finance.cashFlowForecast(req.auth, pharmacyId));
+  }),
+);
+
 export default router;

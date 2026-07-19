@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (HR performance reviews shipped — HR module complete)
+**Last updated:** 2026-07-19 (financial extras shipped — cash-flow forecast + budget variance)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,19 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 6) — financial extras (cash-flow forecast + budget variance), API-verified
+- **Budget variance report & cash-flow forecast** (last two items in the Phase 4 financials
+  backlog besides export formats): `PUT/GET /finance/budgets` (reuses the existing `Budget`
+  model — no migration needed), `GET /finance/budget-variance` (budgeted vs. actual by
+  category for a month), `GET /finance/cash-flow-forecast` (6-month history + 3-month
+  projection, same moving-average + linear-trend method as the Phase-10 sales forecast).
+  Finance page gained both panels plus an inline budget-setting form. Verified via live API
+  (set budget → variance reflects real expense data correctly); caught and fixed a UTC
+  month-bucketing bug during verification (a server running in a negative UTC offset was
+  shifting `"2026-07-01"` back into June when reconstructing the month boundary via local
+  date components). 35 unit tests still pass; no browser pass this round per your
+  minimum-testing instruction — flagging that as a gap if you want the UI itself exercised.
 
 ### Shipped this session (2026-07-19, part 5) — HR performance reviews, browser/API verified — HR module complete
 - **New feature — Performance reviews (spec §11 HR follow-on, the last unbuilt HR sub-area):**

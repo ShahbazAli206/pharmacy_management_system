@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, tokenStore } from '../lib/api';
+import { api, ApiError, tokenStore } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { ExpenseRow, PLReport } from '../lib/types';
+import type { BudgetVariance, CashFlowForecast, ExpenseRow, PLReport } from '../lib/types';
+
+const CATEGORIES = [
+  'RENT_OCCUPANCY', 'PAYROLL', 'UTILITIES', 'BANK_FINANCING', 'INSURANCE',
+  'PROFESSIONAL_FEES', 'MARKETING', 'IT_TECHNOLOGY', 'INVENTORY_PURCHASES',
+  'REPAIRS_MAINTENANCE', 'MISCELLANEOUS',
+] as const;
 
 const money = (cents: number) =>
   new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(cents / 100);
@@ -28,18 +34,25 @@ export function Finance() {
   const [pl, setPl] = useState<PLReport | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [ap, setAp] = useState<ApAging | null>(null);
+  const [variance, setVariance] = useState<BudgetVariance | null>(null);
+  const [cashFlow, setCashFlow] = useState<CashFlowForecast | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [plData, exp, apData] = await Promise.all([
+      const [plData, exp, apData, varianceData, cashFlowData] = await Promise.all([
         api<PLReport>('/finance/pl').catch(() => null),
         api<ExpenseRow[]>('/finance/expenses'),
         api<ApAging>('/finance/ap-aging').catch(() => null),
+        api<BudgetVariance>('/finance/budget-variance').catch(() => null),
+        api<CashFlowForecast>('/finance/cash-flow-forecast').catch(() => null),
       ]);
       setPl(plData);
       setExpenses(exp);
       setAp(apData);
+      setVariance(varianceData);
+      setCashFlow(cashFlowData);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -68,6 +81,23 @@ export function Finance() {
         a.click();
         URL.revokeObjectURL(url);
       });
+  };
+
+  const canWrite = can('finance:write');
+  const hasLocation = !!user?.pharmacy;
+
+  const setBudget = async (category: string, month: string, amountCents: number) => {
+    if (!user?.pharmacy) return;
+    try {
+      await api('/finance/budgets', {
+        method: 'PUT',
+        body: JSON.stringify({ pharmacyId: user.pharmacy.id, category, month, amountCents }),
+      });
+      setNotice('Budget saved.');
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to save budget');
+    }
   };
 
   if (error) return <div className="alert alert-error">{error}</div>;
@@ -140,6 +170,100 @@ export function Finance() {
         </section>
       )}
 
+      {notice && (
+        <div className="alert" style={{ background: '#dcfce7', color: '#166534' }}>
+          {notice}
+        </div>
+      )}
+
+      {cashFlow && cashFlow.history.length > 0 && (
+        <section className="panel">
+          <h2>Cash-flow forecast</h2>
+          <p className="muted" style={{ marginTop: -8 }}>{cashFlow.method}</p>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th className="num">Revenue</th>
+                  <th className="num">Expenses</th>
+                  <th className="num">Net cash flow</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cashFlow.history.map((h) => (
+                  <tr key={h.month}>
+                    <td>{h.month}</td>
+                    <td className="num">{money(h.revenueCents)}</td>
+                    <td className="num">{money(h.expensesCents)}</td>
+                    <td className="num" style={{ color: h.netCashFlowCents >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
+                      {money(h.netCashFlowCents)}
+                    </td>
+                  </tr>
+                ))}
+                {cashFlow.forecast.map((f) => (
+                  <tr key={f.month}>
+                    <td>
+                      {f.month} <span className="badge badge-muted">forecast</span>
+                    </td>
+                    <td className="num">—</td>
+                    <td className="num">—</td>
+                    <td className="num" style={{ color: f.netCashFlowCents >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
+                      {money(f.netCashFlowCents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {variance && (
+        <section className="panel">
+          <div className="page-head row">
+            <h2 style={{ margin: 0 }}>Budget variance — {variance.month}</h2>
+            <span className="muted">
+              Total: {money(variance.totals.actualCents)} actual vs. {money(variance.totals.budgetedCents)} budgeted
+            </span>
+          </div>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th className="num">Budgeted</th>
+                  <th className="num">Actual</th>
+                  <th className="num">Variance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {variance.lines.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="muted">
+                      No budgets set for this month.
+                    </td>
+                  </tr>
+                )}
+                {variance.lines.map((l) => (
+                  <tr key={l.category}>
+                    <td>{l.category.replace(/_/g, ' ')}</td>
+                    <td className="num">{money(l.budgetedCents)}</td>
+                    <td className="num">{money(l.actualCents)}</td>
+                    <td className="num" style={{ color: l.varianceCents > 0 ? 'var(--danger)' : 'var(--ok)' }}>
+                      {money(l.varianceCents)}
+                      {l.variancePct !== null && ` (${l.variancePct > 0 ? '+' : ''}${l.variancePct}%)`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {canWrite && hasLocation && <SetBudgetForm onSave={setBudget} />}
+        </section>
+      )}
+
       <section className="panel">
         <h2>Expenses</h2>
         <div className="table-wrap">
@@ -193,6 +317,53 @@ export function Finance() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function SetBudgetForm({ onSave }: { onSave: (category: string, month: string, amountCents: number) => Promise<void> }) {
+  const now = new Date();
+  const [category, setCategory] = useState<string>(CATEGORIES[0]);
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const valid = category && month && amount && Number(amount) >= 0;
+
+  const submit = async () => {
+    if (!valid) return;
+    setBusy(true);
+    try {
+      await onSave(category, month, Math.round(Number(amount) * 100));
+      setAmount('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="form-grid" style={{ marginTop: 16 }}>
+      <label className="field">
+        Category
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c.replace(/_/g, ' ')}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        Month
+        <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(`${e.target.value}-01`)} />
+      </label>
+      <label className="field">
+        Budget amount (CAD)
+        <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      </label>
+      <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
+        {busy ? 'Saving…' : 'Set budget'}
+      </button>
     </div>
   );
 }

@@ -197,6 +197,26 @@ export interface PLReport {
   transactionCount: number;
 }
 
+export interface BudgetVariance {
+  pharmacyId: string;
+  month: string;
+  lines: Array<{
+    category: string;
+    budgetedCents: number;
+    actualCents: number;
+    varianceCents: number;
+    variancePct: number | null;
+  }>;
+  totals: { budgetedCents: number; actualCents: number; varianceCents: number };
+}
+
+export interface CashFlowForecast {
+  pharmacyId: string;
+  history: Array<{ month: string; revenueCents: number; expensesCents: number; netCashFlowCents: number }>;
+  forecast: Array<{ month: string; netCashFlowCents: number }>;
+  method: string;
+}
+
 export interface ExpenseRow {
   id: string;
   category: string;
