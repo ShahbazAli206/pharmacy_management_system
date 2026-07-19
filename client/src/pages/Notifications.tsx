@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 
 // --- Types (inline; do not import from lib/types) ------------------------
 type NotificationChannel = 'SMS' | 'EMAIL' | 'PUSH' | 'IN_APP';
@@ -45,6 +46,7 @@ const statusBadge = (s: NotificationStatus) =>
 
 export function Notifications() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const manage = can('notification:manage');
 
@@ -92,7 +94,7 @@ export function Notifications() {
         method: 'POST',
         body: body(),
       });
-      setNotice(`Generated ${res.created} refill reminder${res.created === 1 ? '' : 's'}.`);
+      setNotice(t('refillRemindersGeneratedNotice', { count: res.created }));
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -111,7 +113,12 @@ export function Notifications() {
         body: body(),
       });
       setNotice(
-        `Dispatched ${res.sent} of ${res.attempted} (failed ${res.failed}) via ${res.provider}.`,
+        t('dispatchedNotice', {
+          sent: res.sent,
+          attempted: res.attempted,
+          failed: res.failed,
+          provider: res.provider,
+        }),
       );
       await load();
     } catch (e) {
@@ -135,18 +142,18 @@ export function Notifications() {
     <div>
       <header className="page-head row">
         <div>
-          <h1>Notifications</h1>
-          <p className="muted">Patient notifications — CASL refill reminders and dispatch queue</p>
+          <h1>{t('notificationsHeading')}</h1>
+          <p className="muted">{t('notificationsSubtitle')}</p>
         </div>
         {isOwner && (
           <label className="field">
-            Location
+            {t('locationLabel')}
             <select
               className="select"
               value={pharmacyId}
               onChange={(e) => setPharmacyId(e.target.value)}
             >
-              <option value="">Select location…</option>
+              <option value="">{t('selectLocationPlaceholder')}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.province})
@@ -166,23 +173,23 @@ export function Notifications() {
 
       <div className="stat-grid">
         <div className="stat-card">
-          <div className="stat-label">Total in queue</div>
+          <div className="stat-label">{t('statTotalInQueue')}</div>
           <div className="stat-value">{stats.total}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Pending</div>
+          <div className="stat-label">{t('statPending')}</div>
           <div className="stat-value" style={{ color: 'var(--warn)' }}>
             {stats.pending}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Sent</div>
+          <div className="stat-label">{t('statSent')}</div>
           <div className="stat-value" style={{ color: 'var(--ok)' }}>
             {stats.sent}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Failed</div>
+          <div className="stat-label">{t('statFailed')}</div>
           <div
             className="stat-value"
             style={{ color: stats.failed > 0 ? 'var(--danger)' : undefined }}
@@ -194,9 +201,9 @@ export function Notifications() {
 
       {manage && (
         <section className="panel">
-          <h2>Actions</h2>
+          <h2>{t('actionsHeading')}</h2>
           {ownerNeedsLocation && (
-            <p className="muted">Select a location above to generate or dispatch notifications.</p>
+            <p className="muted">{t('selectLocationToGenerateOrDispatch')}</p>
           )}
           <div className="toolbar">
             <button
@@ -204,40 +211,40 @@ export function Notifications() {
               onClick={generate}
               disabled={busy !== null || ownerNeedsLocation}
             >
-              {busy === 'generate' ? 'Generating…' : 'Generate refill reminders'}
+              {busy === 'generate' ? t('generatingEllipsis') : t('generateRefillRemindersButton')}
             </button>
             <button
               className="btn"
               onClick={dispatch}
               disabled={busy !== null || ownerNeedsLocation}
             >
-              {busy === 'dispatch' ? 'Dispatching…' : 'Dispatch pending'}
+              {busy === 'dispatch' ? t('dispatchingEllipsis') : t('dispatchPendingButton')}
             </button>
           </div>
         </section>
       )}
 
       <section className="panel">
-        <h2>Queue</h2>
+        <h2>{t('queueHeading')}</h2>
         {loading ? (
-          <div className="muted">Loading…</div>
+          <div className="muted">{t('loading')}</div>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Channel</th>
-                  <th>Recipient</th>
-                  <th>Subject / message</th>
-                  <th>Status</th>
-                  <th>Created</th>
+                  <th>{t('colChannel')}</th>
+                  <th>{t('colRecipient')}</th>
+                  <th>{t('colSubjectMessage')}</th>
+                  <th>{t('colStatus')}</th>
+                  <th>{t('colCreated')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={5} className="muted">
-                      No notifications in the queue.
+                      {t('noNotificationsInQueue')}
                     </td>
                   </tr>
                 )}

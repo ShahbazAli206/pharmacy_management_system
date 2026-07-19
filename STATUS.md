@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (i18n coverage extended to 2 more pages: Messages, Point of Sale)
+**Last updated:** 2026-07-19 (i18n coverage extended to 2 more pages: Audit Log, Notifications)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,17 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 21) — i18n coverage extended (Audit Log, Notifications)
+- Continued extending i18n: fully translated **Audit Log** (heading, interpolated event-count
+  subtitle, all 5 table columns, pager) and **Notifications** (heading, subtitle, 4 stat tiles,
+  Actions panel with generate/dispatch buttons, Queue table columns, and both dynamic notices —
+  the refill-reminders-generated count and the dispatch summary with 4 interpolated values).
+  Both were small, self-contained pages with no surprises this round. Verified in-browser via
+  Playwright: Audit Log's count-interpolated subtitle and pager ("Page 2 sur 31") advance
+  correctly; Notifications' generate button produces a correctly-interpolated French notice
+  ("0 rappel(s) de renouvellement généré(s)."), zero console errors on either page. 73/73
+  tests still pass. ~8 pages remain English-only.
 
 ### Shipped this session (2026-07-19, part 20) — i18n coverage extended (Messages, Point of Sale)
 - Continued extending i18n: fully translated **Messages** (broadcast composer, intra-location
@@ -463,11 +474,11 @@ for location-scoped writes (`76bbea3`).
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
 - [x] Custom fields — **done this session, extended to Products this session too** (Patients +
   Products both supported now)
-- [x] i18n — **done this session, extended five times more this session** (English/French;
+- [x] i18n — **done this session, extended six times more this session** (English/French;
   chrome + Login + Settings + Owner/Location dashboards + Patients + Products + Inventory +
   Prescriptions + Compliance + Prescribers + Recalls + Narcotics + Transfers + Finance +
-  Messages + Point of Sale now translated, ~10 other pages still English-only — see "Shipped"
-  for how to extend)
+  Messages + Point of Sale + Audit Log + Notifications now translated, ~8 other pages still
+  English-only — see "Shipped" for how to extend)
 
 ---
 

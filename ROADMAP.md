@@ -314,6 +314,11 @@ Legend: [x] done · [~] partial · [ ] not started
   the Recalls page's "lift quarantine" key (`clearButton` → "Lever"), a wrong-context bug
   invisible in English since both happened to read "Clear". Both given dedicated keys and
   re-verified in French. 73/73 tests still pass.
+- [x] **i18n coverage, round 7**: Audit Log and Notifications also fully translated —
+  interpolated event-count subtitle and pager on Audit Log, 4 stat tiles + generate/dispatch
+  notices with interpolated counts on Notifications. Verified in-browser via Playwright
+  (pager advances correctly across pages, generate-reminders notice interpolates a real count
+  with no literal `{{count}}`). 73/73 tests still pass.
 
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
@@ -321,8 +326,9 @@ Legend: [x] done · [~] partial · [ ] not started
 - Bull/Redis job queue; WebRTC/HLS streaming; theme manager; i18n coverage for the
   remaining pages beyond the persistent chrome + Login + Settings + Owner Dashboard +
   Location Dashboard + Patients + Products + Inventory + Prescriptions + Compliance +
-  Prescribers + Recalls + Narcotics + Transfers + Finance + Messages + Point of Sale already
-  translated (~10 pages left, same `t('key')` pattern to extend).
+  Prescribers + Recalls + Narcotics + Transfers + Finance + Messages + Point of Sale +
+  Audit Log + Notifications already translated (~8 pages left, same `t('key')` pattern to
+  extend).
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv

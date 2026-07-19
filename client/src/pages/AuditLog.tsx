@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { AuditEntry, Paginated } from '../lib/types';
 
 export function AuditLog() {
+  const { t } = useI18n();
   const [data, setData] = useState<Paginated<AuditEntry> | null>(null);
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -20,15 +22,15 @@ export function AuditLog() {
   }, [load]);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!data) return <div className="muted">Loading audit log…</div>;
+  if (!data) return <div className="muted">{t('loadingAuditLog')}</div>;
 
   const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
 
   return (
     <div>
       <header className="page-head">
-        <h1>Audit Log</h1>
-        <p className="muted">{data.total.toLocaleString()} immutable event(s)</p>
+        <h1>{t('auditLogHeading')}</h1>
+        <p className="muted">{t('auditLogSubtitle', { count: data.total.toLocaleString() })}</p>
       </header>
 
       <section className="panel">
@@ -36,18 +38,18 @@ export function AuditLog() {
           <table className="table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Action</th>
-                <th>Entity</th>
-                <th>IP</th>
+                <th>{t('colTime')}</th>
+                <th>{t('colUser')}</th>
+                <th>{t('colAction')}</th>
+                <th>{t('colEntity')}</th>
+                <th>{t('colIp')}</th>
               </tr>
             </thead>
             <tbody>
               {data.items.length === 0 && (
                 <tr>
                   <td colSpan={5} className="muted">
-                    No audit events.
+                    {t('noAuditEvents')}
                   </td>
                 </tr>
               )}
@@ -71,13 +73,11 @@ export function AuditLog() {
 
         <div className="pager">
           <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            Previous
+            {t('previous')}
           </button>
-          <span className="muted">
-            Page {page} of {totalPages}
-          </span>
+          <span className="muted">{t('pageOf', { page, totalPages })}</span>
           <button className="btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-            Next
+            {t('next')}
           </button>
         </div>
       </section>
