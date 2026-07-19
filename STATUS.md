@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (QR code generator shipped)
+**Last updated:** 2026-07-19 (global search UI + keyboard shortcut shipped)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,24 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 9) — global search command palette + keyboard shortcut
+- Discovered while scanning the "smaller roadmapped items" list: the Phase 7 `GET /search`
+  API (`search:global` permission) had been backend-complete since that phase but had
+  **zero client UI** — no page ever called it. Built `GlobalSearch`
+  (`client/src/components/GlobalSearch.tsx`): a command palette opened via Ctrl/Cmd+K or a
+  "Search" sidebar button, debounced query (250ms, 2-char minimum), grouped
+  patients/prescriptions/products results. No entity in this app has a per-record detail
+  page, so clicking a result navigates to the relevant list page (Patients/Prescriptions/
+  Inventory), consistent with how the rest of the app already works. This also covers the
+  "keyboard shortcuts" backlog item — combined into one well-scoped feature rather than a
+  keyboard-shortcut system with nothing to attach it to.
+  Verified in-browser via Playwright (new interaction pattern, worth the extra check despite
+  the minimum-testing instruction): nav-button open, Ctrl+K open/toggle, Escape close,
+  click-outside close, and result-click-navigates all confirmed working, zero console errors
+  for a location-scoped user (the only errors seen were pre-existing/unrelated — the
+  Inventory page's own owner-needs-a-location-picker 400s when testing as owner, not caused
+  by this feature).
 
 ### Shipped this session (2026-07-19, part 8) — QR code generator
 - **QR codes** (last item off the "smaller roadmapped items" list besides i18n/backup-UI/
@@ -217,7 +235,8 @@ for location-scoped writes (`76bbea3`).
 - [x] Dark mode / theming — **done this session**
 - [x] Fine-grained "2h-after-due" overdue escalation — **done this session**
 - [x] QR codes — **done this session**
-- [ ] i18n · backup-restore UI · custom fields · keyboard shortcuts
+- [x] Keyboard shortcuts — **done this session** (global search command palette, Ctrl/Cmd+K)
+- [ ] i18n · backup-restore UI · custom fields
 
 ---
 

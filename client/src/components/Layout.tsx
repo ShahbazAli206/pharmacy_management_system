@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { GlobalSearch } from './GlobalSearch';
 
 /** Read the current theme set on <html> (initialised by the inline script in index.html). */
 function getTheme(): 'light' | 'dark' {
@@ -21,6 +22,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
   const [theme, setTheme] = useState<'light' | 'dark'>(getTheme);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const canSearch = can('search:global');
+
+  useEffect(() => {
+    if (!canSearch) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canSearch]);
 
   const handleLogout = async () => {
     await logout();
@@ -50,6 +65,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="nav">
+          {canSearch && (
+            <button
+              className="nav-link"
+              style={{ display: 'flex', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
+              onClick={() => setSearchOpen(true)}
+            >
+              <span>Search</span>
+              <span className="muted" style={{ fontSize: 12 }}>Ctrl+K</span>
+            </button>
+          )}
           {can('dashboard:owner') && (
             <NavLink to="/" end className="nav-link">
               Owner Overview
@@ -191,6 +216,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="content">{children}</main>
+
+      {canSearch && <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />}
     </div>
   );
 }

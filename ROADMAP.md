@@ -214,11 +214,20 @@ Legend: [x] done · [~] partial · [ ] not started
   three finder patterns byte-for-byte correct per spec) plus a live API smoke test; 3 new
   unit tests.
 
+- [x] **Global search client UI + keyboard shortcut.** The `GET /search` API (Phase 7,
+  `search:global`) had shipped with zero client UI. Added a `GlobalSearch` command palette
+  (`client/src/components/GlobalSearch.tsx`) opened via Ctrl/Cmd+K or a "Search" sidebar
+  button, debounced query, grouped results (patients/prescriptions/products); since no
+  entity has a per-record detail page anywhere in this app, a result navigates to the
+  relevant list page, matching existing navigation. Verified in-browser (Playwright): nav
+  button, Ctrl+K, Escape, click-outside, and result-click-navigates all confirmed, zero
+  console errors for a location-scoped user.
+
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
 - Real S3/OCR/Twilio/SendGrid/DocuSign providers (interfaces + stubs in place).
 - Bull/Redis job queue; WebRTC/HLS streaming; i18n/theme manager;
-  backup/restore dashboard UI; custom-fields; keyboard shortcuts.
+  backup/restore dashboard UI; custom-fields.
 
 ---
 
