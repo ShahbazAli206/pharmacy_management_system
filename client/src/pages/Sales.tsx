@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type {
   DailySummary,
   OwnerOverview,
@@ -49,6 +50,7 @@ interface LocationOpt {
 
 export function Sales() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const [tab, setTab] = useState<'sell' | 'reconcile'>('sell');
 
@@ -75,28 +77,28 @@ export function Sales() {
   return (
     <div>
       <header className="page-head">
-        <h1>Point of Sale</h1>
-        <p className="muted">OTC &amp; prescription checkout, tax, and daily cash reconciliation</p>
+        <h1>{t('posHeading')}</h1>
+        <p className="muted">{t('posSubtitle')}</p>
       </header>
 
       <div className="tabs">
         <button className={`tab ${tab === 'sell' ? 'active' : ''}`} onClick={() => setTab('sell')}>
-          Sell
+          {t('sellTab')}
         </button>
         <button
           className={`tab ${tab === 'reconcile' ? 'active' : ''}`}
           onClick={() => setTab('reconcile')}
         >
-          Daily reconciliation
+          {t('dailyReconciliationTab')}
         </button>
       </div>
 
       {isOwner && (
         <div className="toolbar">
           <label className="field" style={{ minWidth: 260 }}>
-            Location
+            {t('locationLabel')}
             <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
-              {locations.length === 0 && <option value="">Loading…</option>}
+              {locations.length === 0 && <option value="">{t('loading')}</option>}
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.province})
@@ -136,6 +138,7 @@ function SellTab({
   province: string;
   ready: boolean;
 }) {
+  const { t } = useI18n();
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<ProductRow[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -241,7 +244,7 @@ function SellTab({
       setCart([]);
       setSearch('');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Sale failed');
+      setError(e instanceof ApiError ? e.message : t('saleFailedFallback'));
     } finally {
       setBusy(false);
     }
@@ -255,14 +258,14 @@ function SellTab({
     <div className="pos-grid">
       {/* Left: catalog search + results */}
       <section className="panel">
-        <h2>Add items</h2>
-        {!ready && <div className="alert">Select a location to start a sale.</div>}
+        <h2>{t('addItemsHeading')}</h2>
+        {!ready && <div className="alert">{t('selectLocationToStartSale')}</div>}
         <label className="field" style={{ marginBottom: 12 }}>
-          Search catalog (name or DIN)
+          {t('searchCatalogLabel')}
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="e.g. Ibuprofen or 00000002"
+            placeholder={t('searchCatalogPlaceholder')}
             disabled={!ready}
           />
         </label>
@@ -278,7 +281,7 @@ function SellTab({
                         {p.name} {p.strength}
                         {p.isControlled && (
                           <span className="badge badge-danger" style={{ marginLeft: 6 }}>
-                            Controlled
+                            {t('controlledBadge')}
                           </span>
                         )}
                       </div>
@@ -289,7 +292,7 @@ function SellTab({
                     <td className="num">{money(p.defaultPriceCents)}</td>
                     <td style={{ width: 1 }}>
                       <button className="btn btn-primary" onClick={() => addProduct(p)}>
-                        Add
+                        {t('addButton')}
                       </button>
                     </td>
                   </tr>
@@ -300,17 +303,17 @@ function SellTab({
         )}
 
         <button className="btn btn-ghost" onClick={addCustomLine} disabled={!ready} style={{ marginTop: 12 }}>
-          + Add custom line (service / compound)
+          {t('addCustomLineButton')}
         </button>
       </section>
 
       {/* Right: cart + totals */}
       <section className="panel">
         <div className="page-head row" style={{ marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>Cart</h2>
+          <h2 style={{ margin: 0 }}>{t('cartHeading')}</h2>
           {cart.length > 0 && (
             <button className="btn btn-ghost" onClick={clearCart}>
-              Clear
+              {t('clearCartButton')}
             </button>
           )}
         </div>
@@ -321,11 +324,11 @@ function SellTab({
           <table className="table">
             <thead>
               <tr>
-                <th>Item</th>
-                <th>Type</th>
-                <th className="num">Qty</th>
-                <th className="num">Unit</th>
-                <th className="num">Line</th>
+                <th>{t('colItem')}</th>
+                <th>{t('colType')}</th>
+                <th className="num">{t('colQty')}</th>
+                <th className="num">{t('colUnit')}</th>
+                <th className="num">{t('colLine')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -333,7 +336,7 @@ function SellTab({
               {cart.length === 0 && (
                 <tr>
                   <td colSpan={6} className="muted">
-                    Cart is empty. Search the catalog and add items.
+                    {t('cartEmptyNotice')}
                   </td>
                 </tr>
               )}
@@ -346,13 +349,13 @@ function SellTab({
                       <input
                         value={l.description}
                         onChange={(e) => patch(l.key, { description: e.target.value })}
-                        placeholder="Description"
+                        placeholder={t('descriptionPlaceholder')}
                         style={{ width: '100%' }}
                       />
                     )}
                     {!isTaxable(l) && (
                       <span className="badge badge-muted" style={{ marginLeft: 6 }}>
-                        Tax-exempt
+                        {t('taxExemptBadge')}
                       </span>
                     )}
                   </td>
@@ -392,7 +395,7 @@ function SellTab({
                   </td>
                   <td className="num">{money(l.unitPriceCents * l.quantity)}</td>
                   <td>
-                    <button className="btn btn-ghost" onClick={() => removeLine(l.key)} title="Remove">
+                    <button className="btn btn-ghost" onClick={() => removeLine(l.key)} title={t('removeTitle')}>
                       ✕
                     </button>
                   </td>
@@ -404,24 +407,27 @@ function SellTab({
 
         <div className="pos-totals">
           <div className="row">
-            <span className="muted">Subtotal</span>
+            <span className="muted">{t('subtotalLabel')}</span>
             <span className="num">{money(totals.subtotal)}</span>
           </div>
           <div className="row">
             <span className="muted">
-              Tax ({(totals.rate * 100).toFixed(totals.rate === 0.14975 ? 3 : 0)}% · {province})
+              {t('taxLabel', {
+                rate: (totals.rate * 100).toFixed(totals.rate === 0.14975 ? 3 : 0),
+                province,
+              })}
             </span>
             <span className="num">{money(totals.tax)}</span>
           </div>
           <div className="row pos-total">
-            <span>Total</span>
+            <span>{t('totalLabel')}</span>
             <span className="num">{money(totals.total)}</span>
           </div>
         </div>
 
         <div className="form-row" style={{ marginTop: 16 }}>
           <label className="field" style={{ minWidth: 160 }}>
-            Payment method
+            {t('paymentMethodLabel')}
             <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
               {PAYMENT_METHODS.map((m) => (
                 <option key={m} value={m}>
@@ -436,12 +442,11 @@ function SellTab({
             disabled={!valid || busy}
             style={{ marginLeft: 'auto', minWidth: 160 }}
           >
-            {busy ? 'Processing…' : `Take payment · ${money(totals.total)}`}
+            {busy ? t('processingEllipsis') : t('takePaymentButton', { total: money(totals.total) })}
           </button>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-          Prescription lines are zero-rated. OTC stock is decremented on completion. Final tax is
-          calculated by the server.
+          {t('posFooterNote')}
         </p>
       </section>
     </div>
@@ -453,6 +458,7 @@ function SellTab({
 // ---------------------------------------------------------------------------
 
 function Receipt({ sale, onNew }: { sale: SaleResponse; onNew: () => void }) {
+  const { t } = useI18n();
   const printReceipt = () => {
     const w = window.open('', 'receipt', 'width=380,height=600');
     if (!w) return;
@@ -473,14 +479,14 @@ function Receipt({ sale, onNew }: { sale: SaleResponse; onNew: () => void }) {
         .row{display:flex;justify-content:space-between}
       </style></head><body>
       <h2>PharmaSuite Pharmacy</h2>
-      <div>Sale ${sale.id.slice(0, 8)}</div>
+      <div>${t('receiptSaleLabel')} ${sale.id.slice(0, 8)}</div>
       <div>${new Date(sale.createdAt).toLocaleString('en-CA')}</div>
-      <div>Payment: ${sale.paymentMethod}</div>
+      <div>${t('receiptPaymentLabel')}: ${sale.paymentMethod}</div>
       <table>${rows}</table>
       <div class="tot">
-        <div class="row"><span>Subtotal</span><span>${money(sale.subtotalCents)}</span></div>
-        <div class="row"><span>Tax (${sale.province})</span><span>${money(sale.taxCents)}</span></div>
-        <div class="row" style="font-weight:700"><span>Total</span><span>${money(sale.totalCents)}</span></div>
+        <div class="row"><span>${t('subtotalLabel')}</span><span>${money(sale.subtotalCents)}</span></div>
+        <div class="row"><span>${t('receiptTaxLabel', { province: sale.province })}</span><span>${money(sale.taxCents)}</span></div>
+        <div class="row" style="font-weight:700"><span>${t('totalLabel')}</span><span>${money(sale.totalCents)}</span></div>
       </div>
       </body></html>`);
     w.document.close();
@@ -491,7 +497,7 @@ function Receipt({ sale, onNew }: { sale: SaleResponse; onNew: () => void }) {
   return (
     <section className="panel" style={{ maxWidth: 560 }}>
       <div className="page-head row">
-        <h2 style={{ margin: 0 }}>Sale complete</h2>
+        <h2 style={{ margin: 0 }}>{t('saleCompleteHeading')}</h2>
         <span className="badge badge-ok">{sale.paymentMethod}</span>
       </div>
       <p className="muted mono" style={{ fontSize: 12 }}>
@@ -507,7 +513,7 @@ function Receipt({ sale, onNew }: { sale: SaleResponse; onNew: () => void }) {
                   {l.description}
                   {!l.taxable && (
                     <span className="badge badge-muted" style={{ marginLeft: 6 }}>
-                      zero-rated
+                      {t('zeroRatedBadge')}
                     </span>
                   )}
                 </td>
@@ -521,25 +527,25 @@ function Receipt({ sale, onNew }: { sale: SaleResponse; onNew: () => void }) {
 
       <div className="pos-totals">
         <div className="row">
-          <span className="muted">Subtotal</span>
+          <span className="muted">{t('subtotalLabel')}</span>
           <span className="num">{money(sale.subtotalCents)}</span>
         </div>
         <div className="row">
-          <span className="muted">Tax ({sale.province})</span>
+          <span className="muted">{t('receiptTaxLabel', { province: sale.province })}</span>
           <span className="num">{money(sale.taxCents)}</span>
         </div>
         <div className="row pos-total">
-          <span>Total</span>
+          <span>{t('totalLabel')}</span>
           <span className="num">{money(sale.totalCents)}</span>
         </div>
       </div>
 
       <div className="form-row" style={{ marginTop: 16 }}>
         <button className="btn btn-primary" onClick={onNew}>
-          New sale
+          {t('newSaleButton')}
         </button>
         <button className="btn" onClick={printReceipt}>
-          Print receipt
+          {t('printReceiptButton')}
         </button>
       </div>
     </section>
@@ -563,6 +569,7 @@ function ReconcileTab({
   pharmacyId: string;
   ready: boolean;
 }) {
+  const { t } = useI18n();
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [counted, setCounted] = useState('');
@@ -582,9 +589,9 @@ function ReconcileTab({
     void load();
   }, [load]);
 
-  if (!ready) return <div className="alert">Select a location to view reconciliation.</div>;
+  if (!ready) return <div className="alert">{t('selectLocationToViewReconciliation')}</div>;
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!summary) return <div className="muted">Loading summary…</div>;
+  if (!summary) return <div className="muted">{t('loadingSummary')}</div>;
 
   const expectedCashCents = summary.byPaymentMethod.CASH ?? 0;
   const countedCents = counted.trim() ? Math.round(Number(counted) * 100) : null;
@@ -593,27 +600,27 @@ function ReconcileTab({
   return (
     <>
       <div className="page-head row">
-        <h2 style={{ margin: 0 }}>Daily summary · {summary.date}</h2>
+        <h2 style={{ margin: 0 }}>{t('dailySummaryHeading', { date: summary.date })}</h2>
         <button className="btn btn-ghost" onClick={() => void load()}>
-          Refresh
+          {t('refreshButton')}
         </button>
       </div>
 
       <div className="stat-grid">
-        <Stat label="Transactions" value={String(summary.transactionCount)} />
-        <Stat label="Subtotal" value={money(summary.subtotalCents)} />
-        <Stat label="Tax collected" value={money(summary.taxCents)} />
-        <Stat label="Total takings" value={money(summary.totalCents)} />
+        <Stat label={t('statTransactions')} value={String(summary.transactionCount)} />
+        <Stat label={t('statSubtotal')} value={money(summary.subtotalCents)} />
+        <Stat label={t('statTaxCollected')} value={money(summary.taxCents)} />
+        <Stat label={t('statTotalTakings')} value={money(summary.totalCents)} />
       </div>
 
       <section className="panel">
-        <h2>By payment method</h2>
+        <h2>{t('byPaymentMethodHeading')}</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Method</th>
-                <th className="num">Amount</th>
+                <th>{t('colMethod')}</th>
+                <th className="num">{t('colAmount')}</th>
               </tr>
             </thead>
             <tbody>
@@ -629,13 +636,13 @@ function ReconcileTab({
       </section>
 
       <section className="panel" style={{ maxWidth: 480 }}>
-        <h2>Cash reconciliation</h2>
+        <h2>{t('cashReconciliationHeading')}</h2>
         <div className="row" style={{ marginBottom: 8 }}>
-          <span className="muted">Expected cash (system)</span>
+          <span className="muted">{t('expectedCashLabel')}</span>
           <span className="num">{money(expectedCashCents)}</span>
         </div>
         <label className="field" style={{ marginBottom: 12 }}>
-          Counted cash in drawer
+          {t('countedCashLabel')}
           <input
             type="number"
             min={0}
@@ -647,7 +654,7 @@ function ReconcileTab({
         </label>
         {variance !== null && (
           <div className="row pos-total">
-            <span>Variance</span>
+            <span>{t('varianceLabel')}</span>
             <span
               className="num"
               style={{ color: variance === 0 ? 'var(--ok)' : 'var(--danger)' }}

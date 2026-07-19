@@ -306,6 +306,14 @@ Legend: [x] done · [~] partial · [ ] not started
   no `t()` is in scope). Verified in-browser, including two interpolated headings
   ("Écart budgétaire — 2026-07", AP-aging's "{{count}} unpaid · {{amount}} owed"). 73/73
   tests still pass.
+- [x] **i18n coverage, round 6**: Messages and Point of Sale also fully translated, including
+  the POS physical receipt (both the on-screen summary and the separate print-window HTML).
+  A Playwright verification pass caught two real bugs pre-ship: hardcoded English
+  `placeholder` attributes on the Messages composers (easy to miss since `t()` was already
+  wrapping the visible labels around them), and the Sales "Clear cart" button silently reusing
+  the Recalls page's "lift quarantine" key (`clearButton` → "Lever"), a wrong-context bug
+  invisible in English since both happened to read "Clear". Both given dedicated keys and
+  re-verified in French. 73/73 tests still pass.
 
 ### Still roadmapped (not built)
 - Client UI surfaces for Phases 8–11 (backend + APIs are done; pages pending).
@@ -313,8 +321,8 @@ Legend: [x] done · [~] partial · [ ] not started
 - Bull/Redis job queue; WebRTC/HLS streaming; theme manager; i18n coverage for the
   remaining pages beyond the persistent chrome + Login + Settings + Owner Dashboard +
   Location Dashboard + Patients + Products + Inventory + Prescriptions + Compliance +
-  Prescribers + Recalls + Narcotics + Transfers + Finance already translated (~12 pages
-  left, same `t('key')` pattern to extend).
+  Prescribers + Recalls + Narcotics + Transfers + Finance + Messages + Point of Sale already
+  translated (~10 pages left, same `t('key')` pattern to extend).
 
 - [x] **On-demand DB backups (Admin console).** `POST/GET /admin/backups` (create/list),
   `GET /admin/backups/:filename/download`, using `pg_dump` via `execFile` with a fixed argv

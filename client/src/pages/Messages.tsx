@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n/I18nContext';
 import type { MessageRow, OwnerOverview } from '../lib/types';
 
 const fmtDate = (s: string) => new Date(s).toLocaleString('en-CA');
 
 // The backend stamps location messages with the sender's role enum as the name;
 // prettify known roles for display, and leave real names (e.g. "System Owner") as-is.
-const ROLE_LABELS: Record<string, string> = {
-  SYSTEM_OWNER: 'System Owner',
-  LOCATION_PARTNER: 'Location Partner',
-  PHARMACIST_IN_CHARGE: 'Pharmacist-in-Charge',
-  PHARMACY_TECHNICIAN: 'Pharmacy Technician',
-  CASHIER: 'Cashier',
-  INVENTORY_MANAGER: 'Inventory Manager',
-  ACCOUNTANT: 'Accountant',
-};
-const senderLabel = (name: string) => ROLE_LABELS[name] ?? name;
+function useSenderLabel() {
+  const { t } = useI18n();
+  const roleLabels: Record<string, string> = {
+    SYSTEM_OWNER: t('roleSystemOwner'),
+    LOCATION_PARTNER: t('roleLocationPartner'),
+    PHARMACIST_IN_CHARGE: t('rolePharmacistInCharge'),
+    PHARMACY_TECHNICIAN: t('rolePharmacyTechnician'),
+    CASHIER: t('roleCashier'),
+    INVENTORY_MANAGER: t('roleInventoryManager'),
+    ACCOUNTANT: t('roleAccountant'),
+  };
+  return (name: string) => roleLabels[name] ?? name;
+}
 
 interface LocationOpt {
   id: string;
@@ -25,6 +29,8 @@ interface LocationOpt {
 
 export function Messages() {
   const { user, can } = useAuth();
+  const { t } = useI18n();
+  const senderLabel = useSenderLabel();
   const isOwner = user?.role === 'SYSTEM_OWNER';
   const canSend = can('message:send');
   const canBroadcast = can('message:broadcast');
@@ -53,17 +59,15 @@ export function Messages() {
 
   const locationName = useMemo(() => {
     const map = new Map(locations.map((l) => [l.id, l.name]));
-    return (id: string | null) => (id ? map.get(id) ?? 'A location' : 'All locations');
-  }, [locations]);
+    return (id: string | null) => (id ? map.get(id) ?? t('aLocationLabel') : t('allLocationsLabel'));
+  }, [locations, t]);
 
   return (
     <div>
       <header className="page-head">
-        <h1>Messages</h1>
+        <h1>{t('messagesHeading')}</h1>
         <p className="muted">
-          {isOwner
-            ? 'Broadcast to every location or one, and read location traffic'
-            : 'Team messages for your location and owner broadcasts'}
+          {isOwner ? t('messagesSubtitleOwner') : t('messagesSubtitleStaff')}
         </p>
       </header>
 
@@ -96,15 +100,15 @@ export function Messages() {
 
       <section className="panel">
         <div className="page-head row">
-          <h2 style={{ margin: 0 }}>Inbox</h2>
+          <h2 style={{ margin: 0 }}>{t('inboxHeading')}</h2>
           <button className="btn btn-ghost" onClick={() => void load()}>
-            Refresh
+            {t('refreshButton')}
           </button>
         </div>
 
-        {!messages && <div className="muted">Loading messages…</div>}
+        {!messages && <div className="muted">{t('loadingMessages')}</div>}
         {messages && messages.length === 0 && (
-          <div className="muted">No messages yet.</div>
+          <div className="muted">{t('noMessagesYet')}</div>
         )}
 
         <div className="msg-list">
@@ -114,7 +118,7 @@ export function Messages() {
                 <span
                   className={`badge ${m.scope === 'BROADCAST' ? 'badge-warn' : 'badge-muted'}`}
                 >
-                  {m.scope === 'BROADCAST' ? 'Broadcast' : 'Location'}
+                  {m.scope === 'BROADCAST' ? t('broadcastBadge') : t('locationBadge')}
                 </span>
                 <span className="msg-sender">{senderLabel(m.senderName)}</span>
                 {isOwner && (
@@ -145,6 +149,7 @@ function BroadcastComposer({
   onSent: (msg: string) => void;
   onError: (m: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [target, setTarget] = useState(''); // '' = all locations
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -165,9 +170,9 @@ function BroadcastComposer({
       });
       setSubject('');
       setBody('');
-      onSent(target ? 'Broadcast sent to the selected location.' : 'Broadcast sent to all locations.');
+      onSent(target ? t('broadcastSentToLocationNotice') : t('broadcastSentToAllNotice'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to send broadcast');
+      onError(e instanceof ApiError ? e.message : t('failedToSendBroadcast'));
     } finally {
       setBusy(false);
     }
@@ -175,12 +180,12 @@ function BroadcastComposer({
 
   return (
     <section className="panel">
-      <h2>Compose broadcast</h2>
+      <h2>{t('composeBroadcastHeading')}</h2>
       <div className="form-grid">
         <label className="field">
-          Send to
+          {t('sendToLabel')}
           <select value={target} onChange={(e) => setTarget(e.target.value)}>
-            <option value="">All locations</option>
+            <option value="">{t('allLocationsLabel')}</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
@@ -189,16 +194,16 @@ function BroadcastComposer({
           </select>
         </label>
         <label className="field">
-          Subject (optional)
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Policy update" />
+          {t('subjectOptionalLabel')}
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t('broadcastSubjectPlaceholder')} />
         </label>
       </div>
       <label className="field" style={{ margin: '14px 0' }}>
-        Message
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Type your announcement…" />
+        {t('messageLabel')}
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder={t('broadcastBodyPlaceholder')} />
       </label>
       <button className="btn btn-primary" onClick={send} disabled={busy || !body.trim()}>
-        {busy ? 'Sending…' : 'Send broadcast'}
+        {busy ? t('sendingEllipsis') : t('sendBroadcastButton')}
       </button>
     </section>
   );
@@ -217,6 +222,7 @@ function LocationComposer({
   onSent: (msg: string) => void;
   onError: (m: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -232,9 +238,9 @@ function LocationComposer({
       });
       setSubject('');
       setBody('');
-      onSent('Message sent to your team.');
+      onSent(t('messageSentToTeamNotice'));
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Failed to send message');
+      onError(e instanceof ApiError ? e.message : t('failedToSendMessage'));
     } finally {
       setBusy(false);
     }
@@ -242,20 +248,20 @@ function LocationComposer({
 
   return (
     <section className="panel">
-      <h2>New message</h2>
+      <h2>{t('newMessageHeading')}</h2>
       <p className="muted" style={{ marginTop: -6, marginBottom: 12, fontSize: 13 }}>
-        Visible to staff at {pharmacyName}.
+        {t('visibleToStaffAt', { pharmacyName })}
       </p>
       <label className="field" style={{ marginBottom: 12 }}>
-        Subject (optional)
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Fridge temp check" />
+        {t('subjectOptionalLabel')}
+        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t('locationSubjectPlaceholder')} />
       </label>
       <label className="field" style={{ marginBottom: 14 }}>
-        Message
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Type a note for your team…" />
+        {t('messageLabel')}
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder={t('locationBodyPlaceholder')} />
       </label>
       <button className="btn btn-primary" onClick={send} disabled={busy || !body.trim()}>
-        {busy ? 'Sending…' : 'Send message'}
+        {busy ? t('sendingEllipsis') : t('sendMessageButton')}
       </button>
     </section>
   );

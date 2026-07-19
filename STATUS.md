@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (i18n coverage extended to 2 more pages: Transfers, Finance)
+**Last updated:** 2026-07-19 (i18n coverage extended to 2 more pages: Messages, Point of Sale)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,23 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-19, part 20) — i18n coverage extended (Messages, Point of Sale)
+- Continued extending i18n: fully translated **Messages** (broadcast composer, intra-location
+  composer, inbox list with Broadcast/Location badges and sender-role labels) and **Point of
+  Sale** (Sell tab: catalog search, cart table, totals with interpolated tax rate/province,
+  receipt screen including the physical print-window receipt; Daily reconciliation tab: stat
+  tiles, by-payment-method table, cash reconciliation panel).
+  A background-agent Playwright verification pass caught two real bugs before they shipped:
+  (1) four `placeholder` attributes on the Messages composers were left as hardcoded English
+  strings — `t()` was wrapping the labels but not the placeholders, an easy category to miss
+  since placeholders don't look like visible copy in the JSX at a glance; (2) the Sales page's
+  "Clear cart" button was wired to the pre-existing `clearButton` key (English "Clear", correct
+  by coincidence) which is actually the Recalls page's "lift quarantine" action — in French it
+  rendered as "Lever" instead of "Vider", a wrong-context bug that plain English-only testing
+  would never have caught. Both fixed with their own dedicated keys, verified rendering
+  correctly in French on a second Playwright pass.
+  73/73 tests still pass. ~10 pages remain English-only.
 
 ### Shipped this session (2026-07-19, part 19) — i18n coverage extended (Transfers, Finance)
 - Continued extending i18n: fully translated **Transfers** (request form, approve/reject/
@@ -446,10 +463,11 @@ for location-scoped writes (`76bbea3`).
 - [x] Backup UI — **done this session** (create/list/download only; restore stays manual by design)
 - [x] Custom fields — **done this session, extended to Products this session too** (Patients +
   Products both supported now)
-- [x] i18n — **done this session, extended four times more this session** (English/French;
+- [x] i18n — **done this session, extended five times more this session** (English/French;
   chrome + Login + Settings + Owner/Location dashboards + Patients + Products + Inventory +
-  Prescriptions + Compliance + Prescribers + Recalls + Narcotics + Transfers + Finance now
-  translated, ~12 other pages still English-only — see "Shipped" for how to extend)
+  Prescriptions + Compliance + Prescribers + Recalls + Narcotics + Transfers + Finance +
+  Messages + Point of Sale now translated, ~10 other pages still English-only — see "Shipped"
+  for how to extend)
 
 ---
 
