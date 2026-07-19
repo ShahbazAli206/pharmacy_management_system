@@ -1,6 +1,6 @@
 # Project Status — Pharmacy Management System
 
-**Last updated:** 2026-07-19 (i18n coverage completed — all remaining 11 pages translated: Admin, Attendance, Cameras, Documents, Incidents, Reports, Reviews, Scheduling, Staff, Training, Workflow)
+**Last updated:** 2026-07-20 (fixed a real bug found via manual testing: Inventory page had no owner location picker)
 **Canonical "where are we / how to resume" doc.** Read this first in any new session.
 Detailed step plan lives in [`ROADMAP.md`](./ROADMAP.md).
 
@@ -48,6 +48,25 @@ auth/RBAC/location-scoping + a core clinical workflow.
 **Bug fixes found & shipped during verification:** `ffc4e9d` (narcotics receipt on
 controlled-stock receive), `f1761df` (maintenance-mode lockout), owner location-picker
 for location-scoped writes (`76bbea3`).
+
+### Shipped this session (2026-07-20, part 23) — bug fix: Inventory owner location picker
+- Found via manual testing (user reported a DB-connection error on the Inventory page; the DB
+  itself turned out fine on refresh, but poking at the page as the System Owner surfaced a
+  real, pre-existing gap): **`client/src/pages/Inventory.tsx` never handled the owner role at
+  all** — no location picker, no `?pharmacyId=` query param — so it always failed with a bare
+  "pharmacyId is required" error for the owner, with no way to recover. Worked fine for
+  location-scoped roles (partner/PIC/etc.) since they don't need to pick a location. This was
+  actually already flagged as a known gap in an earlier session's notes (see part 9) but never
+  fixed.
+  Fixed by adding the same owner-location-picker pattern already used on Sales/Messages/
+  Notifications: `fetchLocations()` populates a dropdown for the owner only, defaults to the
+  first location, and both `/inventory` and `/inventory/alerts/expiry` now pass
+  `?pharmacyId=` when the owner has one selected. Non-owner roles are unaffected (same
+  unscoped calls as before).
+  Verified via Playwright: owner now sees a "Location" dropdown, inventory loads with a real
+  product count, and switching locations correctly reloads data for the new location (e.g.
+  1 product at the default location → 0 at a different one), zero console errors. 73/73 tests
+  still pass; typecheck clean.
 
 ### Shipped this session (2026-07-19, part 22) — i18n coverage COMPLETE (all 11 remaining pages)
 - Finished the i18n backlog in one pass: **Cameras, Workflow, Attendance, Reports, Staff,

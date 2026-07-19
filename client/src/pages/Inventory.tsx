@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { useI18n } from '../lib/i18n/I18nContext';
+import { fetchLocations, type LocationOption } from '../lib/locations';
 import type { ExpiryAlert, InventoryRow } from '../lib/types';
 
 export function Inventory() {
   const { t } = useI18n();
+  const { user } = useAuth();
+  const isOwner = user?.role === 'SYSTEM_OWNER';
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [pharmacyId, setPharmacyId] = useState('');
   const [rows, setRows] = useState<InventoryRow[] | null>(null);
   const [expiry, setExpiry] = useState<ExpiryAlert[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -17,14 +23,35 @@ export function Inventory() {
   };
 
   useEffect(() => {
-    Promise.all([api<InventoryRow[]>('/inventory'), api<ExpiryAlert[]>('/inventory/alerts/expiry')])
+    if (!isOwner) return;
+    fetchLocations()
+      .then((opts) => {
+        setLocations(opts);
+        if (opts[0]) setPharmacyId(opts[0].id);
+      })
+      .catch(() => {});
+  }, [isOwner]);
+
+  const ready = !isOwner || !!pharmacyId;
+
+  const load = useCallback(() => {
+    if (!ready) return;
+    const q = isOwner && pharmacyId ? `?pharmacyId=${pharmacyId}` : '';
+    setRows(null);
+    setError(null);
+    Promise.all([api<InventoryRow[]>(`/inventory${q}`), api<ExpiryAlert[]>(`/inventory/alerts/expiry${q}`)])
       .then(([inv, exp]) => {
         setRows(inv);
         setExpiry(exp);
       })
       .catch((e) => setError(e.message));
-  }, []);
+  }, [isOwner, pharmacyId, ready]);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (isOwner && !ready) return <div className="alert">{t('selectLocationPlaceholder')}</div>;
   if (error) return <div className="alert alert-error">{error}</div>;
   if (!rows) return <div className="muted">{t('loadingInventory')}</div>;
 
@@ -39,6 +66,22 @@ export function Inventory() {
           {t('expiryAlertsCount', { count: expiry.length })}
         </p>
       </header>
+
+      {isOwner && (
+        <div className="toolbar">
+          <label className="field" style={{ minWidth: 260 }}>
+            {t('locationLabel')}
+            <select value={pharmacyId} onChange={(e) => setPharmacyId(e.target.value)}>
+              {locations.length === 0 && <option value="">{t('loading')}</option>}
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name} ({l.code})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {expiry.length > 0 && (
         <section className="panel">
