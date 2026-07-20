@@ -579,6 +579,14 @@ model Sale {
   taxCents       Int
   totalCents     Int
   paymentMethod  PaymentMethod
+  // Set only for DEBIT/CREDIT (a real gateway charge happened); null for
+  // CASH/INSURANCE. See services/paymentGateway.ts.
+  paymentTransactionId String?
+  // Set only for INSURANCE (a real adjudicated claim happened). coveredCents
+  // is how much of totalCents the payer covers; the rest is patient-pay —
+  // see services/insuranceAdjudication.ts.
+  insuranceClaimId      String?
+  insuranceCoveredCents Int?
   lines          SaleLine[]
   refunds        Refund[]
   createdAt      DateTime      @default(now())
@@ -625,6 +633,9 @@ model Refund {
   reason            String
   status            RefundStatus @default(PENDING_APPROVAL)
   lines             RefundLine[]
+  // Set only when the original sale was DEBIT/CREDIT and the gateway refund
+  // call actually ran (i.e. once the refund COMPLETEs). See services/paymentGateway.ts.
+  paymentTransactionId String?
   requestedByUserId String
   decidedByUserId   String?
   decidedAt         DateTime?

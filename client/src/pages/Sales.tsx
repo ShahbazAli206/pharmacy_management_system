@@ -536,6 +536,12 @@ function Receipt({
       </div>
       <p className="muted mono" style={{ fontSize: 12 }}>
         {sale.id} · {new Date(sale.createdAt).toLocaleString('en-CA')}
+        {sale.paymentTransactionId && (
+          <>
+            {' · '}
+            {t('gatewayTransactionLabel')} {sale.paymentTransactionId}
+          </>
+        )}
       </p>
 
       <div className="table-wrap">
@@ -572,6 +578,20 @@ function Receipt({
           <span>{t('totalLabel')}</span>
           <span className="num">{money(sale.totalCents)}</span>
         </div>
+        {sale.insuranceClaimId && (
+          <>
+            <div className="row">
+              <span className="muted">{t('insuranceCoveredLabel')}</span>
+              <span className="num" style={{ color: 'var(--ok)' }}>
+                −{money(sale.insuranceCoveredCents ?? 0)}
+              </span>
+            </div>
+            <div className="row pos-total">
+              <span>{t('patientOwesLabel')}</span>
+              <span className="num">{money(sale.totalCents - (sale.insuranceCoveredCents ?? 0))}</span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="form-row" style={{ marginTop: 16 }}>

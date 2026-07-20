@@ -370,6 +370,9 @@ export interface SaleResponse {
   taxCents: number;
   totalCents: number;
   paymentMethod: PaymentMethod;
+  paymentTransactionId?: string | null;
+  insuranceClaimId?: string | null;
+  insuranceCoveredCents?: number | null;
   createdAt: string;
   lines: Array<{
     id: string;

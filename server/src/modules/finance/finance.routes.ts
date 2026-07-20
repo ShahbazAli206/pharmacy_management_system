@@ -8,6 +8,7 @@ import { asyncHandler, badRequest, unauthorized } from '../../utils/httpError';
 import { recordAudit } from '../../services/audit';
 import { toCsv, centsToDollars } from '../../utils/csv';
 import { expensesPdfBuffer, plStatementPdfBuffer } from '../../utils/pdf';
+import { expensesToQuickBooksIif, expensesToSageCsv } from '../../services/accountingExport';
 import * as expenses from './expenses.service';
 import * as finance from './finance.service';
 import { runCraRemittanceEscalation } from '../../services/craRemittance';
@@ -85,6 +86,21 @@ router.get(
       );
       res.header('Content-Type', 'application/pdf').header('Content-Disposition', 'attachment; filename="expenses.pdf"');
       res.send(pdf);
+      return;
+    }
+    // QuickBooks (IIF) / Sage 50 (CSV) accounting exports — see
+    // services/accountingExport.ts for the format sources and the
+    // deployment-specific chart-of-accounts caveat.
+    if (req.query.format === 'iif') {
+      await recordAudit({ action: 'EXPORT', entity: 'Expense', metadata: { count: list.length, format: 'iif' }, req });
+      res.header('Content-Type', 'application/octet-stream').header('Content-Disposition', 'attachment; filename="expenses.iif"');
+      res.send(expensesToQuickBooksIif(list));
+      return;
+    }
+    if (req.query.format === 'sage-csv') {
+      await recordAudit({ action: 'EXPORT', entity: 'Expense', metadata: { count: list.length, format: 'sage-csv' }, req });
+      res.header('Content-Type', 'text/csv').header('Content-Disposition', 'attachment; filename="expenses-sage.csv"');
+      res.send(expensesToSageCsv(list));
       return;
     }
     res.json(list);

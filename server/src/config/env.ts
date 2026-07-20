@@ -38,6 +38,13 @@ const schema = z.object({
   // PATH unless overridden (e.g. a portable/non-standard Postgres install).
   PG_DUMP_PATH: z.string().default('pg_dump'),
   BACKUP_DIR: z.string().default('backups'),
+
+  // Background job queue (spec §16: "background job queues... for OCR
+  // processing, report generation, and notification sending"). Unset =
+  // in-process queue (default, no infra needed); set to a real Redis
+  // connection string to switch the same queue code onto Bull. See
+  // services/queue.ts.
+  REDIS_URL: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);

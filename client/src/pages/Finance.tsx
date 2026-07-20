@@ -117,6 +117,8 @@ export function Finance() {
   };
   const exportCsv = () => downloadExport(`/finance/expenses?format=csv${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'expenses.csv');
   const exportExpensesPdf = () => downloadExport(`/finance/expenses?format=pdf${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'expenses.pdf');
+  const exportIif = () => downloadExport(`/finance/expenses?format=iif${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'expenses.iif');
+  const exportSageCsv = () => downloadExport(`/finance/expenses?format=sage-csv${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'expenses-sage.csv');
   const exportPlPdf = () => downloadExport(`/finance/pl?format=pdf${isOwner && pharmacyId ? `&pharmacyId=${pharmacyId}` : ''}`, 'profit-loss.pdf');
 
   const canWrite = can('finance:write');
@@ -153,6 +155,12 @@ export function Finance() {
           </button>
           <button className="btn" onClick={exportExpensesPdf}>
             {t('exportExpensesPdfButton')}
+          </button>
+          <button className="btn btn-ghost" onClick={exportIif} title={t('quickBooksExportTitle')}>
+            {t('exportQuickBooksButton')}
+          </button>
+          <button className="btn btn-ghost" onClick={exportSageCsv} title={t('sageExportTitle')}>
+            {t('exportSageButton')}
           </button>
         </div>
       </header>

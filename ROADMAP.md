@@ -440,17 +440,46 @@ UAT, DR drills, legal/regulatory sign-offs).
   bug `finance.service.ts`'s `monthStart` had already been fixed for once before, and I
   reintroduced a fresh instance of it. Finance page gained a remittances panel. 2 unit + 4
   integration tests.
-- [ ] QuickBooks/Sage export — buildable now; needs the exact IIF/QBO/CSV column layout pinned
-  down first, then the exporter written.
-- [ ] Payment-gateway (Moneris/Square) adapter — no pluggable interface exists yet at all
-  (unlike OCR/S3/Twilio/DocuSign); the adapter layer itself needs designing and writing before
-  it's a "plug in creds" problem.
-- [ ] Provincial/private insurance adjudication (TELUS Health, ODB, etc.) — same situation: no
-  interface exists yet, real claims/protocol logic needs to be designed and built.
+- [x] **QuickBooks/Sage export — DONE, against real documented formats (not guessed).**
+  New `services/accountingExport.ts`: QuickBooks IIF (TRNS/SPL/ENDTRNS, tab-delimited, verified
+  splits always sum to zero) and Sage 50/Sage Business Cloud Accounting CSV (`Reference,Date,
+  Description,Ledger Account Number,...,Debit,Credit,...`, verified against Sage's own KB
+  example). **Necessarily-deployment-specific caveat, called out in code and the UI:** which GL
+  account each expense category posts to can't be known generically — placeholder account
+  numbers/names are used, and a bookkeeper must remap them to the real chart of accounts before
+  relying on this for actual filing (true of any accounting export, not a shortcut taken here).
+  Finance page gained both export buttons. 8 unit tests (zero-sum invariant, exact header
+  strings, CSV escaping, date formats).
+- [x] **Payment-gateway adapter — DONE.** New `services/paymentGateway.ts` (pluggable, stub
+  approves everything) wired into `sales.service.ts`: DEBIT/CREDIT sales charge before the DB
+  transaction opens (a decline must stop the sale from being created, and an external call has
+  no business holding a transaction open); a decline throws before anything is written.
+  Refunds reverse the charge the same way, on both the immediate-complete and
+  manager-approved paths. New `Sale.paymentTransactionId`/`Refund.paymentTransactionId`
+  columns. Receipt shows the gateway transaction id when present. 3 unit tests + live
+  end-to-end verification (charge → refund → reversal, cash sales correctly skip the gateway
+  entirely).
+- [x] **Insurance adjudication interface — DONE.** New `services/insuranceAdjudication.ts`
+  (pluggable, stub approves in full). Only the Rx-line portion of a sale is claimable — OTC/
+  compound/service lines are never drug-plan-covered and stay patient-pay regardless; a claim
+  rejection blocks the sale the same way a card decline does. Refunds reverse the whole claim
+  (real payers reverse at the claim level, not a partial dollar amount). New
+  `Sale.insuranceClaimId`/`insuranceCoveredCents` columns. Receipt shows "insurance covered /
+  patient owes" when present. 3 unit tests + live end-to-end verification (RX-only coverage
+  split, patientId-required guard, refund→claim-reversal).
 
 ### Infrastructure-adjacent (spec §16 Scalability)
-- [ ] Bull/Redis job queue wiring — Redis provisioning is a config matter, but there is
-  currently zero queue-consuming code (OCR jobs, report generation) to move onto it.
+- [x] **Job queue abstraction — DONE.** New `services/queue.ts`: in-process by default (zero
+  infra, `setImmediate`-based), transparently swaps to a real Bull queue the moment `REDIS_URL`
+  is set — same call sites, no code change at the swap point. Deliberately NOT wired onto OCR or
+  report generation: both are synchronous request/response endpoints today (a pharmacist
+  waits for the OCR pre-fill; a report caller waits for the JSON), and queuing them would mean
+  inventing a job-status-polling API — a UX regression, not an architecture win. Instead wired
+  onto what's genuinely a background job today: all four scheduled jobs (daily sales summary,
+  recall-notification SLA sweep, recall-feed poll, CRA-remittance escalation) now enqueue rather
+  than run inline from the timer — the real trigger/execution split a job queue exists for.
+  `bull` added as a real dependency (its own bundled TS types, no `@types/bull` needed). 4 unit
+  tests + a clean server boot with zero warnings.
 - [ ] Automated/scheduled backup job — manual `pg_dump` backup code already exists; turning it
   into a cron-triggered scheduled job is still new code (point-in-time recovery beyond this is
   mostly WAL-archiving infra config, not app code).

@@ -1,10 +1,47 @@
-import { Prisma, RefundStatus } from '@prisma/client';
+import crypto from 'crypto';
+import { PaymentMethod, Prisma, RefundStatus } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { badRequest, forbidden, notFound } from '../../utils/httpError';
 import { restockReturn } from '../inventory/inventory.service';
 import { getSettings } from '../../services/settings';
+import { getPaymentGateway } from '../../services/paymentGateway';
+import { getInsuranceAdjudicationProvider } from '../../services/insuranceAdjudication';
+
+const CARD_METHODS: PaymentMethod[] = ['DEBIT', 'CREDIT'];
+
+/**
+ * Refunds a card charge through the gateway (before any DB write — a decline
+ * must stop the refund, not partially apply it). No-op for cash/insurance
+ * sales, or a card sale that somehow never got a gateway transaction id.
+ */
+async function refundCardChargeIfNeeded(
+  paymentMethod: PaymentMethod,
+  originalTransactionId: string | null,
+  amountCents: number,
+): Promise<string | null> {
+  if (!CARD_METHODS.includes(paymentMethod) || !originalTransactionId) return null;
+  const result = await getPaymentGateway().refund({
+    originalTransactionId,
+    amountCents,
+    idempotencyKey: crypto.randomUUID(),
+  });
+  if (!result.ok) throw badRequest(`Gateway refund failed: ${result.error ?? 'unknown error'}`);
+  return result.transactionId ?? null;
+}
+
+/**
+ * Reverses the whole insurance claim (not a partial amount — real payers
+ * reverse/adjust at the claim level, not a dollar sub-amount) whenever any
+ * refund against an insurance-adjudicated sale completes. No-op for
+ * cash/card sales, or an insurance sale that somehow has no claim id.
+ */
+async function reverseInsuranceClaimIfNeeded(paymentMethod: PaymentMethod, claimId: string | null): Promise<void> {
+  if (paymentMethod !== 'INSURANCE' || !claimId) return;
+  const result = await getInsuranceAdjudicationProvider().reverseClaim(claimId);
+  if (!result.ok) throw badRequest(`Insurance claim reversal failed: ${result.error ?? 'unknown error'}`);
+}
 
 export interface RefundLineInput {
   saleLineId: string;
@@ -79,6 +116,14 @@ export async function createRefund(auth: AuthContext, input: CreateRefundInput) 
   const threshold = (await getSettings()).refundApprovalThresholdCents;
   const needsApproval = amountCents > threshold;
 
+  // Gateway call happens BEFORE the transaction opens — same reasoning as
+  // sales.service.ts's charge: an external network call shouldn't hold a DB
+  // transaction open, and a decline must stop the refund from being created.
+  const paymentTransactionId = needsApproval
+    ? null
+    : await refundCardChargeIfNeeded(sale.paymentMethod, sale.paymentTransactionId, amountCents);
+  if (!needsApproval) await reverseInsuranceClaimIfNeeded(sale.paymentMethod, sale.insuranceClaimId);
+
   return prisma.$transaction(async (tx) => {
     const refund = await tx.refund.create({
       data: {
@@ -88,6 +133,7 @@ export async function createRefund(auth: AuthContext, input: CreateRefundInput) 
         reason: input.reason,
         status: needsApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
         requestedByUserId: auth.userId,
+        paymentTransactionId,
         ...(needsApproval ? {} : { decidedAt: new Date() }),
         lines: { create: lineData },
       },
@@ -122,6 +168,11 @@ export async function decideRefund(
   if (refund.status !== 'PENDING_APPROVAL') throw badRequest(`Refund is already ${refund.status}`);
   if (refund.requestedByUserId === auth.userId) throw forbidden('You cannot approve your own refund');
 
+  const sale = refund.lines[0]?.saleLine.sale;
+  const paymentTransactionId =
+    decision === 'APPROVED' && sale ? await refundCardChargeIfNeeded(sale.paymentMethod, sale.paymentTransactionId, refund.amountCents) : null;
+  if (decision === 'APPROVED' && sale) await reverseInsuranceClaimIfNeeded(sale.paymentMethod, sale.insuranceClaimId);
+
   return prisma.$transaction(async (tx) => {
     if (decision === 'APPROVED') {
       await restockRefundLines(tx, refund.pharmacyId, refund.lines);
@@ -132,6 +183,7 @@ export async function decideRefund(
         status: decision === 'APPROVED' ? 'COMPLETED' : 'REJECTED',
         decidedByUserId: auth.userId,
         decidedAt: new Date(),
+        ...(paymentTransactionId ? { paymentTransactionId } : {}),
       },
       include: REFUND_INCLUDE,
     });

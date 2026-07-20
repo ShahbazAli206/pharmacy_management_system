@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { SaleItemType, PaymentMethod } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
@@ -5,6 +6,11 @@ import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { badRequest, notFound } from '../../utils/httpError';
 import { taxCentsFor } from '../../services/tax';
 import { decrementStockFEFO } from '../inventory/inventory.service';
+import { getPaymentGateway } from '../../services/paymentGateway';
+import { getInsuranceAdjudicationProvider } from '../../services/insuranceAdjudication';
+
+/** DEBIT/CREDIT route through the card gateway; CASH/INSURANCE never do. */
+const CARD_METHODS: PaymentMethod[] = ['DEBIT', 'CREDIT'];
 
 export interface SaleLineInput {
   itemType: SaleItemType;
@@ -43,6 +49,37 @@ export async function createSale(auth: AuthContext, input: CreateSaleInput) {
   const taxCents = taxCentsFor(pharmacy.province, taxableCents);
   const totalCents = subtotalCents + taxCents;
 
+  // Card charge happens BEFORE the DB transaction opens — an external
+  // network call has no business holding a transaction open, and a decline
+  // must stop the sale from being created at all. The idempotency key is
+  // generated up front since the Sale row (and its id) doesn't exist yet.
+  let paymentTransactionId: string | null = null;
+  if (CARD_METHODS.includes(input.paymentMethod)) {
+    const idempotencyKey = crypto.randomUUID();
+    const result = await getPaymentGateway().charge({ amountCents: totalCents, currency: 'CAD', idempotencyKey });
+    if (!result.ok) throw badRequest(`Payment declined: ${result.error ?? 'unknown error'}`);
+    paymentTransactionId = result.transactionId ?? null;
+  }
+
+  // Insurance adjudication (spec §7) — same "call before the transaction,
+  // reject before writing anything" reasoning as the card gateway above.
+  // Only the Rx-line portion is claimable; OTC/compound/service lines are
+  // never covered by a drug plan, so they stay patient-pay regardless.
+  let insuranceClaimId: string | null = null;
+  let insuranceCoveredCents: number | null = null;
+  if (input.paymentMethod === 'INSURANCE') {
+    if (!input.patientId) throw badRequest('patientId is required for an insurance-adjudicated sale');
+    const rxCents = lines.filter((l) => l.itemType === 'RX').reduce((s, l) => s + l.lineTotalCents, 0);
+    const claim = await getInsuranceAdjudicationProvider().submitClaim({
+      patientId: input.patientId,
+      costCents: rxCents,
+      idempotencyKey: crypto.randomUUID(),
+    });
+    if (!claim.ok) throw badRequest(`Insurance claim rejected: ${claim.rejectReason ?? 'unknown reason'}`);
+    insuranceClaimId = claim.claimId ?? null;
+    insuranceCoveredCents = claim.coveredCents ?? 0;
+  }
+
   return prisma.$transaction(async (tx) => {
     // Decrement stock for OTC/product-backed lines (Rx stock already left on dispense).
     for (const l of lines) {
@@ -61,6 +98,9 @@ export async function createSale(auth: AuthContext, input: CreateSaleInput) {
         taxCents,
         totalCents,
         paymentMethod: input.paymentMethod,
+        paymentTransactionId,
+        insuranceClaimId,
+        insuranceCoveredCents,
         lines: {
           create: lines.map((l) => ({
             itemType: l.itemType,
