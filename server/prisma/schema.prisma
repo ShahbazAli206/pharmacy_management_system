@@ -92,6 +92,10 @@ model Pharmacy {
   postalCode     String
   phone          String?
   status         PharmacyStatus @default(ACTIVE)
+  // Role-based IP whitelisting (spec §13.1): comma-separated IPv4 addresses/CIDR
+  // ranges (e.g. "203.0.113.4,198.51.100.0/24"). Null/empty = no restriction.
+  // Enforced at login time for location-scoped roles — see auth.service.ts login().
+  allowedIpRanges String?
   users          User[]
   patients       Patient[]
   auditLogs      AuditLog[]
@@ -124,6 +128,7 @@ model Pharmacy {
   incidentReports    IncidentReport[]
   trainingRecords    TrainingRecord[]
   performanceReviews PerformanceReview[]
+  refunds            Refund[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -146,6 +151,13 @@ model User {
   // License tracking (pharmacists/technicians)
   licenseNumber String?
   licenseExpiry DateTime?
+  // Social Insurance Number — payroll/CRA remittance use only (spec §13.1: field-level
+  // encrypted like health card / insurance IDs). Encrypted at rest (AES-256-GCM), same
+  // "iv:tag:ciphertext" hex format as Patient.healthCardEnc — see src/utils/crypto.ts.
+  // Never returned from the staff list endpoint; only the single-user detail endpoint
+  // (USER_MANAGE) decrypts it.
+  sinEnc        String?
+  lastActivityAt DateTime? // updated on each authenticated request; drives the inactivity-timeout check
   lastLoginAt   DateTime?
   refreshTokens RefreshToken[]
   passwordResets PasswordResetToken[]
@@ -568,6 +580,7 @@ model Sale {
   totalCents     Int
   paymentMethod  PaymentMethod
   lines          SaleLine[]
+  refunds        Refund[]
   createdAt      DateTime      @default(now())
 
   @@index([pharmacyId])
@@ -585,8 +598,53 @@ model SaleLine {
   unitPriceCents Int
   lineTotalCents Int
   taxable        Boolean      @default(true)
+  refundLines    RefundLine[]
 
   @@index([saleId])
+}
+
+// ---------------------------------------------------------------------------
+// Refunds & returns (spec §7). Amounts at/below SystemSettings
+// `refundApprovalThresholdCents` complete immediately; amounts above it need a
+// manager decision (REFUND_APPROVE) before the stock reversal happens — no
+// self-approval, mirroring the Expense workflow's own rule.
+// ---------------------------------------------------------------------------
+enum RefundStatus {
+  PENDING_APPROVAL
+  COMPLETED
+  REJECTED
+}
+
+model Refund {
+  id                String       @id @default(uuid())
+  pharmacyId        String
+  pharmacy          Pharmacy     @relation(fields: [pharmacyId], references: [id])
+  saleId            String
+  sale              Sale         @relation(fields: [saleId], references: [id])
+  amountCents       Int
+  reason            String
+  status            RefundStatus @default(PENDING_APPROVAL)
+  lines             RefundLine[]
+  requestedByUserId String
+  decidedByUserId   String?
+  decidedAt         DateTime?
+  createdAt         DateTime     @default(now())
+
+  @@index([pharmacyId, status])
+  @@index([saleId])
+}
+
+model RefundLine {
+  id             String   @id @default(uuid())
+  refundId       String
+  refund         Refund   @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  saleLineId     String
+  saleLine       SaleLine @relation(fields: [saleLineId], references: [id])
+  quantity       Int
+  amountCents    Int
+
+  @@index([refundId])
+  @@index([saleLineId])
 }
 
 // ---------------------------------------------------------------------------

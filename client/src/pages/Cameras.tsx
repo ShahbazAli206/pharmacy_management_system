@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useI18n } from '../lib/i18n/I18nContext';
+import { CameraPlayer } from '../components/CameraPlayer';
 import type { CameraRow } from '../lib/types';
 
 const statusColor: Record<string, string> = {
@@ -49,19 +50,12 @@ export function Cameras() {
                 <span className="dot" style={{ background: statusColor[c.status] }} />
               </div>
               <div style={{ fontWeight: 600, marginTop: 4 }}>{c.label}</div>
-              <div
-                style={{
-                  background: '#0f172a',
-                  height: 120,
-                  borderRadius: 8,
-                  margin: '10px 0',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: '#64748b',
-                  fontSize: 13,
-                }}
-              >
-                {c.status === 'ONLINE' ? t('liveFeedLabel') : statusLabel(c.status)}
+              <div className="camera-feed-frame">
+                {c.status === 'ONLINE' ? (
+                  <CameraPlayer streamUrl={c.streamUrl} label={c.label} />
+                ) : (
+                  <div className="camera-feed-placeholder">{statusLabel(c.status)}</div>
+                )}
               </div>
               <div className="stat-sub" style={{ color: 'var(--muted)' }}>
                 {c.pharmacy.code} · {c.ipAddress}

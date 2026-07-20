@@ -13,6 +13,7 @@ import { badRequest, mfaRequired, unauthorized } from '../../utils/httpError';
 import { recordAudit } from '../../services/audit';
 import { generateMfaSecret, mfaKeyUri, verifyMfaToken } from '../../services/mfa';
 import { getNotificationProvider } from '../../services/notifications';
+import { ipMatchesAllowList } from '../../utils/ip';
 
 /** Reset tokens live for one hour. */
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -40,11 +41,32 @@ export async function login(
 ): Promise<LoginResult> {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
-    include: { role: { include: { permissions: { include: { permission: true } } } } },
+    include: {
+      role: { include: { permissions: { include: { permission: true } } } },
+      pharmacy: { select: { allowedIpRanges: true } },
+    },
   });
 
   if (!user || !user.isActive) {
     await recordAudit({ action: 'LOGIN_FAILED', entity: 'Auth', metadata: { email }, req });
+    throw unauthorized('Invalid credentials');
+  }
+
+  // Role-based IP whitelisting (spec §13.1): a location-scoped account whose
+  // pharmacy has configured an allow-list may only log in from a matching IP.
+  // The system owner is unrestricted (they legitimately need access from
+  // anywhere). Rejected the same way as bad credentials — the response never
+  // discloses that an IP restriction exists, only the audit log does.
+  const allowList = user.pharmacy?.allowedIpRanges;
+  if (allowList && !ipMatchesAllowList(req.ip ?? '', allowList)) {
+    await recordAudit({
+      action: 'LOGIN_FAILED',
+      entity: 'Auth',
+      userId: user.id,
+      pharmacyId: user.pharmacyId,
+      metadata: { reason: 'ip_not_allowed' },
+      req,
+    });
     throw unauthorized('Invalid credentials');
   }
 
@@ -93,7 +115,10 @@ export async function login(
     },
   });
 
-  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  // Also resets the inactivity clock: without this, a user who was already
+  // idle-timed-out from a prior session would immediately trip the same
+  // check on their very next authenticated request after a fresh login.
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), lastActivityAt: new Date() } });
   await recordAudit({
     action: 'LOGIN',
     entity: 'Auth',
@@ -129,7 +154,27 @@ export async function refresh(rawToken: string): Promise<{ accessToken: string; 
     throw unauthorized('Invalid or expired refresh token');
   }
 
-  // Rotate: revoke the used token and issue a fresh pair.
+  // Enforce the inactivity timeout here too, not just in the authenticate
+  // middleware. Without this check, a client whose access token happens to
+  // expire around the same time it went idle (the common case when
+  // SESSION_INACTIVITY_TIMEOUT == JWT_ACCESS_TTL, both 15 min by default)
+  // would never hit the authenticate-side check at all — it would get a
+  // TokenExpiredError first, silently refresh, and the "inactivity" timeout
+  // would never actually fire.
+  if (stored.user.lastActivityAt) {
+    const idleMs = Date.now() - stored.user.lastActivityAt.getTime();
+    if (idleMs > env.SESSION_INACTIVITY_TIMEOUT * 1000) {
+      await prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw unauthorized('Session expired due to inactivity');
+    }
+  }
+
+  // Rotate: revoke the used token and issue a fresh pair. Also bumps the
+  // inactivity clock — a client refreshing its access token is, by
+  // definition, still actively driving the app.
   const newRefresh = generateRefreshToken();
   await prisma.$transaction([
     prisma.refreshToken.update({
@@ -143,6 +188,7 @@ export async function refresh(rawToken: string): Promise<{ accessToken: string; 
         expiresAt: refreshExpiryDate(),
       },
     }),
+    prisma.user.update({ where: { id: stored.userId }, data: { lastActivityAt: new Date() } }),
   ]);
 
   const accessToken = signAccessToken({

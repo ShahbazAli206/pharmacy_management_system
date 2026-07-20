@@ -24,6 +24,8 @@ const patchSchema = z.object({
   defaultCurrency: z.string().optional(),
   defaultTimezone: z.string().optional(),
   defaultLocale: z.string().optional(),
+  refundApprovalThresholdCents: z.number().int().min(0).optional(),
+  craRemitterType: z.enum(['REGULAR', 'QUARTERLY']).optional(),
 });
 
 router.put(

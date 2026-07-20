@@ -80,12 +80,16 @@ export async function createSale(auth: AuthContext, input: CreateSaleInput) {
   });
 }
 
-/** Daily cash-reconciliation summary for a location. */
-export async function dailySummary(auth: AuthContext, requestedPharmacyId?: string, day = new Date()) {
-  const pharmacyId = isOwner(auth) ? requestedPharmacyId : auth.locationId;
-  if (!pharmacyId) throw badRequest('pharmacyId is required');
-  assertLocationAccess(auth, pharmacyId);
+/** Single-sale detail (needed so a cashier can look up an older receipt to process a refund against). */
+export async function getSale(auth: AuthContext, id: string) {
+  const sale = await prisma.sale.findUnique({ where: { id }, include: { lines: true } });
+  if (!sale) throw notFound('Sale not found');
+  assertLocationAccess(auth, sale.pharmacyId);
+  return sale;
+}
 
+/** Pure computation, no AuthContext — used both by the authed route and the scheduled daily-summary job. */
+export async function computeDailySummary(pharmacyId: string, day = new Date()) {
   const start = new Date(day);
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
@@ -114,4 +118,12 @@ export async function dailySummary(auth: AuthContext, requestedPharmacyId?: stri
     totalCents: total,
     byPaymentMethod: byMethod,
   };
+}
+
+/** Daily cash-reconciliation summary for a location, scoped to the caller. */
+export async function dailySummary(auth: AuthContext, requestedPharmacyId?: string, day = new Date()) {
+  const pharmacyId = isOwner(auth) ? requestedPharmacyId : auth.locationId;
+  if (!pharmacyId) throw badRequest('pharmacyId is required');
+  assertLocationAccess(auth, pharmacyId);
+  return computeDailySummary(pharmacyId, day);
 }

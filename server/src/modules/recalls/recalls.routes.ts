@@ -6,6 +6,7 @@ import { PERMISSIONS } from '../../constants/permissions';
 import { asyncHandler, unauthorized } from '../../utils/httpError';
 import { recordAudit } from '../../services/audit';
 import * as service from './recalls.service';
+import { runRecallPollJob } from '../../jobs/recallPoll';
 
 const router = Router();
 router.use(authenticate);
@@ -52,6 +53,28 @@ router.post(
       req,
     });
     res.status(201).json(result);
+  }),
+);
+
+// Manual trigger for the real Health Canada recall-feed poll (owner/RECALL_MANAGE)
+// — the scheduler runs this automatically every 2 hours; exposed for testing.
+router.post(
+  '/poll',
+  requirePermission(PERMISSIONS.RECALL_MANAGE),
+  asyncHandler(async (req, res) => {
+    const result = await runRecallPollJob();
+    await recordAudit({ action: 'CREATE', entity: 'RecallFeedPoll', metadata: result, req });
+    res.status(201).json(result);
+  }),
+);
+
+// Manual trigger for the recall-notification SLA sweep (owner/RECALL_MANAGE) —
+// the scheduler runs this automatically every 5 minutes; exposed for testing.
+router.post(
+  '/notifications/escalate',
+  requirePermission(PERMISSIONS.RECALL_MANAGE),
+  asyncHandler(async (_req, res) => {
+    res.json(await service.runRecallNotificationEscalation());
   }),
 );
 

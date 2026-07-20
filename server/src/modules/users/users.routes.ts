@@ -8,6 +8,7 @@ import { PERMISSIONS } from '../../constants/permissions';
 import { asyncHandler, badRequest, forbidden, notFound, unauthorized } from '../../utils/httpError';
 import { recordAudit } from '../../services/audit';
 import { hashPassword } from '../../utils/password';
+import { decryptNullable, encryptNullable } from '../../utils/crypto';
 
 const router = Router();
 router.use(authenticate);
@@ -61,6 +62,26 @@ router.get(
   }),
 );
 
+// Single-staff detail, including the decrypted SIN — deliberately NOT part of
+// publicSelect/the list endpoint above (mirrors how patient health-card/
+// insurance IDs are only decrypted on the single-record read, never the list).
+router.get(
+  '/:id',
+  requirePermission(PERMISSIONS.USER_MANAGE),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    const target = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { ...publicSelect, sinEnc: true },
+    });
+    if (!target) throw notFound('User not found');
+    assertLocationAccess(req.auth, target.pharmacyId);
+    const { sinEnc, ...rest } = target;
+    await recordAudit({ action: 'READ', entity: 'User', entityId: target.id, req });
+    res.json({ ...rest, sin: decryptNullable(sinEnc) });
+  }),
+);
+
 const createSchema = z.object({
   email: z.string().email(),
   firstName: z.string().min(1),
@@ -70,6 +91,7 @@ const createSchema = z.object({
   pharmacyId: z.string().uuid().optional(),
   licenseNumber: z.string().optional(),
   licenseExpiry: z.string().optional(),
+  sin: z.string().nullable().optional(),
 });
 
 // Create a staff account.
@@ -107,6 +129,7 @@ router.post(
           pharmacyId,
           licenseNumber: input.licenseNumber ?? null,
           licenseExpiry: input.licenseExpiry ? new Date(input.licenseExpiry) : null,
+          sinEnc: encryptNullable(input.sin),
         },
         select: publicSelect,
       });
@@ -126,6 +149,7 @@ const updateSchema = z.object({
   role: z.enum(ASSIGNABLE_ROLES).optional(),
   licenseNumber: z.string().nullable().optional(),
   licenseExpiry: z.string().nullable().optional(),
+  sin: z.string().nullable().optional(),
 });
 
 // Update a staff account (activate/deactivate, role, license).
@@ -161,6 +185,7 @@ router.patch(
     if (input.licenseExpiry !== undefined) {
       data.licenseExpiry = input.licenseExpiry ? new Date(input.licenseExpiry) : null;
     }
+    if (input.sin !== undefined) data.sinEnc = encryptNullable(input.sin);
 
     const user = await prisma.user.update({
       where: { id: target.id },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DollarSign, Plus, Receipt as ReceiptIcon } from 'lucide-react';
+import { DollarSign, Plus, Receipt as ReceiptIcon, RotateCcw } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { StatCard } from '../components/StatCard';
@@ -10,6 +10,7 @@ import type {
   Paginated,
   PaymentMethod,
   ProductRow,
+  RefundRow,
   SaleItemType,
   SaleResponse,
 } from '../lib/types';
@@ -54,7 +55,13 @@ export function Sales() {
   const { user } = useAuth();
   const { t } = useI18n();
   const isOwner = user?.role === 'SYSTEM_OWNER';
-  const [tab, setTab] = useState<'sell' | 'reconcile'>('sell');
+  const [tab, setTab] = useState<'sell' | 'reconcile' | 'refunds'>('sell');
+  const [refundSaleId, setRefundSaleId] = useState<string | null>(null);
+
+  const startRefund = (saleId: string) => {
+    setRefundSaleId(saleId);
+    setTab('refunds');
+  };
 
   // Owner must pick a location (drives pharmacyId + tax province); non-owners
   // are pinned to their own pharmacy by the API.
@@ -93,6 +100,9 @@ export function Sales() {
         >
           {t('dailyReconciliationTab')}
         </button>
+        <button className={`tab ${tab === 'refunds' ? 'active' : ''}`} onClick={() => setTab('refunds')}>
+          {t('refundsTab')}
+        </button>
       </div>
 
       {isOwner && (
@@ -111,15 +121,26 @@ export function Sales() {
         </div>
       )}
 
-      {tab === 'sell' ? (
+      {tab === 'sell' && (
         <SellTab
           isOwner={isOwner}
           pharmacyId={pharmacyId}
           province={province}
           ready={!isOwner || !!pharmacyId}
+          onStartRefund={startRefund}
         />
-      ) : (
+      )}
+      {tab === 'reconcile' && (
         <ReconcileTab isOwner={isOwner} pharmacyId={pharmacyId} ready={!isOwner || !!pharmacyId} />
+      )}
+      {tab === 'refunds' && (
+        <RefundsTab
+          isOwner={isOwner}
+          pharmacyId={pharmacyId}
+          ready={!isOwner || !!pharmacyId}
+          prefillSaleId={refundSaleId}
+          onPrefillConsumed={() => setRefundSaleId(null)}
+        />
       )}
     </div>
   );
@@ -134,11 +155,13 @@ function SellTab({
   pharmacyId,
   province,
   ready,
+  onStartRefund,
 }: {
   isOwner: boolean;
   pharmacyId: string;
   province: string;
   ready: boolean;
+  onStartRefund: (saleId: string) => void;
 }) {
   const { t } = useI18n();
   const [search, setSearch] = useState('');
@@ -253,7 +276,7 @@ function SellTab({
   };
 
   if (receipt) {
-    return <Receipt sale={receipt} onNew={() => setReceipt(null)} />;
+    return <Receipt sale={receipt} onNew={() => setReceipt(null)} onRefund={onStartRefund} />;
   }
 
   return (
@@ -460,7 +483,15 @@ function SellTab({
 // Receipt (post-sale, authoritative server figures) + print
 // ---------------------------------------------------------------------------
 
-function Receipt({ sale, onNew }: { sale: SaleResponse; onNew: () => void }) {
+function Receipt({
+  sale,
+  onNew,
+  onRefund,
+}: {
+  sale: SaleResponse;
+  onNew: () => void;
+  onRefund: (saleId: string) => void;
+}) {
   const { t } = useI18n();
   const printReceipt = () => {
     const w = window.open('', 'receipt', 'width=380,height=600');
@@ -549,6 +580,10 @@ function Receipt({ sale, onNew }: { sale: SaleResponse; onNew: () => void }) {
         </button>
         <button className="btn" onClick={printReceipt}>
           {t('printReceiptButton')}
+        </button>
+        <button className="btn btn-ghost" onClick={() => onRefund(sale.id)}>
+          <RotateCcw size={16} />
+          {t('startRefundButton')}
         </button>
       </div>
     </section>
@@ -669,5 +704,270 @@ function ReconcileTab({
         )}
       </section>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Refunds
+// ---------------------------------------------------------------------------
+
+const REFUND_STATUS_KEY: Record<RefundRow['status'], 'refundStatusPending' | 'refundStatusCompleted' | 'refundStatusRejected'> = {
+  PENDING_APPROVAL: 'refundStatusPending',
+  COMPLETED: 'refundStatusCompleted',
+  REJECTED: 'refundStatusRejected',
+};
+const REFUND_STATUS_BADGE: Record<RefundRow['status'], string> = {
+  PENDING_APPROVAL: 'badge-warn',
+  COMPLETED: 'badge-ok',
+  REJECTED: 'badge-danger',
+};
+
+function RefundsTab({
+  isOwner,
+  pharmacyId,
+  ready,
+  prefillSaleId,
+  onPrefillConsumed,
+}: {
+  isOwner: boolean;
+  pharmacyId: string;
+  ready: boolean;
+  prefillSaleId: string | null;
+  onPrefillConsumed: () => void;
+}) {
+  const { t } = useI18n();
+  const { can } = useAuth();
+  const [saleIdInput, setSaleIdInput] = useState('');
+  const [sale, setSale] = useState<SaleResponse | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [refunds, setRefunds] = useState<RefundRow[] | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const loadQueue = useCallback(async () => {
+    if (!ready) return;
+    try {
+      const q = isOwner && pharmacyId ? `?pharmacyId=${pharmacyId}` : '';
+      setRefunds(await api<RefundRow[]>(`/refunds${q}`));
+    } catch (e) {
+      setLookupError((e as Error).message);
+    }
+  }, [isOwner, pharmacyId, ready]);
+
+  useEffect(() => {
+    void loadQueue();
+  }, [loadQueue]);
+
+  const lookupSale = useCallback(async (id: string) => {
+    setLookupError(null);
+    setSale(null);
+    try {
+      setSale(await api<SaleResponse>(`/sales/${id}`));
+    } catch {
+      setLookupError(t('saleNotFoundNotice'));
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (prefillSaleId) {
+      setSaleIdInput(prefillSaleId);
+      void lookupSale(prefillSaleId);
+      onPrefillConsumed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillSaleId]);
+
+  const decide = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
+    await api(`/refunds/${id}/decision`, { method: 'POST', body: JSON.stringify({ decision }) });
+    await loadQueue();
+  };
+
+  return (
+    <>
+      <section className="panel">
+        <h2>{t('lookupSaleHeading')}</h2>
+        <div className="form-row">
+          <label className="field" style={{ minWidth: 320, flex: 1 }}>
+            {t('saleIdLabel')}
+            <input
+              value={saleIdInput}
+              onChange={(e) => setSaleIdInput(e.target.value)}
+              placeholder={t('saleIdPlaceholder')}
+              className="mono"
+            />
+          </label>
+          <button className="btn btn-primary" onClick={() => void lookupSale(saleIdInput.trim())} disabled={!saleIdInput.trim()}>
+            {t('lookUpSaleButton')}
+          </button>
+        </div>
+        {lookupError && <div className="alert alert-error">{lookupError}</div>}
+      </section>
+
+      {sale && (
+        <RefundPanel
+          sale={sale}
+          onDone={(msg) => {
+            setNotice(msg);
+            setSale(null);
+            setSaleIdInput('');
+            void loadQueue();
+          }}
+          onCancel={() => setSale(null)}
+        />
+      )}
+
+      {notice && (
+        <div className="alert" style={{ background: '#dcfce7', color: '#166534' }}>
+          {notice}
+        </div>
+      )}
+
+      <section className="panel">
+        <h2>{t('refundQueueHeading')}</h2>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t('colTime')}</th>
+                <th>{t('colReason')}</th>
+                <th className="num">{t('colAmount')}</th>
+                <th>{t('colStatus')}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {!refunds && (
+                <tr>
+                  <td colSpan={5} className="muted">{t('loadingRefunds')}</td>
+                </tr>
+              )}
+              {refunds && refunds.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="muted">{t('noRefundsYet')}</td>
+                </tr>
+              )}
+              {refunds?.map((r) => (
+                <tr key={r.id}>
+                  <td className="muted" style={{ fontSize: 12 }}>{new Date(r.createdAt).toLocaleString('en-CA')}</td>
+                  <td>{r.reason}</td>
+                  <td className="num">{money(r.amountCents)}</td>
+                  <td>
+                    <span className={`badge ${REFUND_STATUS_BADGE[r.status]}`}>{t(REFUND_STATUS_KEY[r.status])}</span>
+                  </td>
+                  <td>
+                    {r.status === 'PENDING_APPROVAL' && can('refund:approve') && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-primary" onClick={() => void decide(r.id, 'APPROVED')}>
+                          {t('approveButton')}
+                        </button>
+                        <button className="btn btn-ghost" onClick={() => void decide(r.id, 'REJECTED')}>
+                          {t('rejectButton')}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function RefundPanel({
+  sale,
+  onDone,
+  onCancel,
+}: {
+  sale: SaleResponse;
+  onDone: (msg: string) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  const [qtyByLine, setQtyByLine] = useState<Record<string, number>>({});
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const lines = Object.entries(qtyByLine).filter(([, q]) => q > 0);
+  const valid = reason.trim() && lines.length > 0;
+
+  const submit = async () => {
+    if (!valid) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const refund = await api<RefundRow>('/refunds', {
+        method: 'POST',
+        body: JSON.stringify({
+          saleId: sale.id,
+          reason: reason.trim(),
+          lines: lines.map(([saleLineId, quantity]) => ({ saleLineId, quantity })),
+        }),
+      });
+      onDone(
+        refund.status === 'COMPLETED'
+          ? t('refundSubmittedCompletedNotice', { amount: money(refund.amountCents) })
+          : t('refundSubmittedPendingNotice', { amount: money(refund.amountCents) }),
+      );
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t('refundFailedFallback'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel">
+      <h2>{t('refundPanelHeading', { id: sale.id.slice(0, 8) })}</h2>
+      {error && <div className="alert alert-error">{error}</div>}
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{t('colItem')}</th>
+              <th className="num">{t('colQty')}</th>
+              <th className="num">{t('refundQtyLabel')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sale.lines.map((l) => (
+              <tr key={l.id}>
+                <td>{l.description}</td>
+                <td className="num">{l.quantity}</td>
+                <td className="num">
+                  <input
+                    type="number"
+                    min={0}
+                    max={l.quantity}
+                    value={qtyByLine[l.id] ?? 0}
+                    onChange={(e) =>
+                      setQtyByLine((prev) => ({
+                        ...prev,
+                        [l.id]: Math.max(0, Math.min(l.quantity, Number(e.target.value) || 0)),
+                      }))
+                    }
+                    style={{ width: 64, textAlign: 'right' }}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <label className="field" style={{ marginTop: 12 }}>
+        {t('refundReasonLabel')}
+        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('refundReasonPlaceholder')} />
+      </label>
+      <div className="form-row" style={{ marginTop: 16 }}>
+        <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
+          {t('submitRefundButton')}
+        </button>
+        <button className="btn btn-ghost" onClick={onCancel}>
+          {t('cancelButton')}
+        </button>
+      </div>
+    </section>
   );
 }

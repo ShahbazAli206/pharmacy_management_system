@@ -11,6 +11,11 @@ export interface SystemSettings {
   defaultCurrency: string;
   defaultTimezone: string;
   defaultLocale: string;
+  // Refunds at/below this amount complete immediately; above it, a manager
+  // (refund:approve) must decide before the stock reversal happens (spec §7).
+  refundApprovalThresholdCents: number;
+  // Drives auto-computed CRA remittance due dates on PAYROLL expenses (spec §11).
+  craRemitterType: 'REGULAR' | 'QUARTERLY';
 }
 
 export const DEFAULT_SETTINGS: SystemSettings = {
@@ -19,6 +24,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   defaultCurrency: 'CAD',
   defaultTimezone: 'America/Toronto',
   defaultLocale: 'en-CA',
+  refundApprovalThresholdCents: 5000, // $50.00
+  craRemitterType: 'REGULAR',
 };
 
 let cache: { value: SystemSettings; expires: number } | null = null;

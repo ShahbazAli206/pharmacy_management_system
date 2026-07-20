@@ -44,6 +44,8 @@ router.post(
   }),
 );
 
+// Must be registered before GET /:id, or "daily-summary" would be swallowed
+// as an :id lookup.
 router.get(
   '/daily-summary',
   requirePermission(PERMISSIONS.POS_SELL),
@@ -51,6 +53,15 @@ router.get(
     if (!req.auth) throw unauthorized();
     const pharmacyId = typeof req.query.pharmacyId === 'string' ? req.query.pharmacyId : undefined;
     res.json(await service.dailySummary(req.auth, pharmacyId));
+  }),
+);
+
+router.get(
+  '/:id',
+  requirePermission(PERMISSIONS.POS_SELL),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    res.json(await service.getSale(req.auth, req.params.id));
   }),
 );
 

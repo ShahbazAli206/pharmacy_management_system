@@ -11,6 +11,7 @@ import { code39Svg } from '../../utils/barcode';
 import { qrCodeSvg } from '../../utils/qrcode';
 import { createBackup, listBackups, resolveBackupPath } from '../../services/backup';
 import { recordAudit } from '../../services/audit';
+import { runDailySalesSummaryJob } from '../../jobs/dailySalesSummary';
 
 const router = Router();
 router.use(authenticate);
@@ -127,6 +128,21 @@ router.get(
     res.download(filePath, (err) => {
       if (err && !res.headersSent) next(err);
     });
+  }),
+);
+
+/**
+ * Manual trigger for the daily sales summary job (owner-only) — the scheduler
+ * in src/index.ts runs this automatically once a day; this exists for
+ * testing/demo without waiting for the scheduled time.
+ */
+router.post(
+  '/jobs/daily-sales-summary',
+  requirePermission(PERMISSIONS.SYSTEM_MONITOR),
+  asyncHandler(async (req, res) => {
+    const result = await runDailySalesSummaryJob();
+    await recordAudit({ action: 'CREATE', entity: 'DailySalesSummaryJob', metadata: result, req });
+    res.status(201).json(result);
   }),
 );
 

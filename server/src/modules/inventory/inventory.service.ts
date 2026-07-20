@@ -156,6 +156,37 @@ export async function decrementStockFEFO(
   };
 }
 
+/**
+ * Restore stock for a returned OTC item (refunds — spec §7). Adds the returned
+ * quantity onto the location's most-recently-created lot for that product (or
+ * creates a fresh untracked-lot-number lot if none exists yet) rather than
+ * inventing expiry/cost data we don't actually have for a returned unit.
+ * Deliberately never called for controlled substances — a returned narcotic
+ * needs pharmacist judgment before it goes back on a shelf, not an automatic
+ * stock bump; the narcotics register is left untouched by refunds.
+ */
+export async function restockReturn(tx: Tx, pharmacyId: string, productId: string, quantity: number): Promise<void> {
+  if (quantity <= 0) return;
+  const item = await tx.inventoryItem.upsert({
+    where: { pharmacyId_productId: { pharmacyId, productId } },
+    create: { pharmacyId, productId },
+    update: {},
+  });
+
+  const latestLot = await tx.stockLot.findFirst({
+    where: { inventoryItemId: item.id },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (latestLot) {
+    await tx.stockLot.update({ where: { id: latestLot.id }, data: { quantityOnHand: { increment: quantity } } });
+  } else {
+    await tx.stockLot.create({
+      data: { inventoryItemId: item.id, lotNumber: 'RETURN', quantityOnHand: quantity, unitCostCents: 0 },
+    });
+  }
+}
+
 /** Lots expiring within the given horizon, bucketed at 30/60/90 days. */
 export async function expiryAlerts(auth: AuthContext, requestedPharmacyId?: string, now = new Date()) {
   const pharmacyId = scopeFor(auth, requestedPharmacyId);

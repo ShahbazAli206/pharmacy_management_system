@@ -59,6 +59,7 @@ export function Staff() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sinEditId, setSinEditId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -165,39 +166,129 @@ export function Staff() {
                 const self = u.id === user?.id;
                 const canToggle = !self && !(u.role.name === 'SYSTEM_OWNER' && !isOwner);
                 return (
-                  <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
-                    <td>
-                      {u.lastName}, {u.firstName}
-                      {self && <span className="badge badge-muted" style={{ marginLeft: 6 }}>{t('youBadge')}</span>}
-                    </td>
-                    <td className="mono" style={{ fontSize: 12 }}>{u.email}</td>
-                    <td>{roleLabels[u.role.name] ?? u.role.name}</td>
-                    {isOwner && <td>{u.pharmacy ? u.pharmacy.code : '—'}</td>}
-                    <td className="mono" style={{ fontSize: 12 }}>{u.licenseNumber ?? '—'}</td>
-                    <td className="muted" style={{ fontSize: 12 }}>{fmtDate(u.lastLoginAt)}</td>
-                    <td>
-                      <span className={`badge ${u.isActive ? 'badge-ok' : 'badge-muted'}`}>
-                        {u.isActive ? t('activeBadge') : t('inactiveBadge')}
-                      </span>
-                    </td>
-                    <td>
-                      {canToggle && (
+                  <>
+                    <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
+                      <td>
+                        {u.lastName}, {u.firstName}
+                        {self && <span className="badge badge-muted" style={{ marginLeft: 6 }}>{t('youBadge')}</span>}
+                      </td>
+                      <td className="mono" style={{ fontSize: 12 }}>{u.email}</td>
+                      <td>{roleLabels[u.role.name] ?? u.role.name}</td>
+                      {isOwner && <td>{u.pharmacy ? u.pharmacy.code : '—'}</td>}
+                      <td className="mono" style={{ fontSize: 12 }}>{u.licenseNumber ?? '—'}</td>
+                      <td className="muted" style={{ fontSize: 12 }}>{fmtDate(u.lastLoginAt)}</td>
+                      <td>
+                        <span className={`badge ${u.isActive ? 'badge-ok' : 'badge-muted'}`}>
+                          {u.isActive ? t('activeBadge') : t('inactiveBadge')}
+                        </span>
+                      </td>
+                      <td style={{ display: 'flex', gap: 6 }}>
                         <button
                           className="btn btn-ghost"
-                          disabled={busyId === u.id}
-                          onClick={() => toggleActive(u)}
+                          onClick={() => setSinEditId(sinEditId === u.id ? null : u.id)}
+                          title={t('sinOptionalLabel')}
                         >
-                          {u.isActive ? t('deactivateButton') : t('reactivateButton')}
+                          {t('manageSinButton')}
                         </button>
-                      )}
-                    </td>
-                  </tr>
+                        {canToggle && (
+                          <button
+                            className="btn btn-ghost"
+                            disabled={busyId === u.id}
+                            onClick={() => toggleActive(u)}
+                          >
+                            {u.isActive ? t('deactivateButton') : t('reactivateButton')}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {sinEditId === u.id && (
+                      <tr>
+                        <td colSpan={isOwner ? 8 : 7}>
+                          <SinEditor
+                            user={u}
+                            onDone={(msg) => {
+                              setSinEditId(null);
+                              if (msg) setNotice(msg);
+                            }}
+                            onError={setError}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })}
             </tbody>
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function SinEditor({
+  user,
+  onDone,
+  onError,
+}: {
+  user: StaffRow;
+  onDone: (msg: string | null) => void;
+  onError: (m: string | null) => void;
+}) {
+  const { t } = useI18n();
+  const [sin, setSin] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    api<{ sin: string | null }>(`/users/${user.id}`)
+      .then((detail) => {
+        if (active) setSin(detail.sin ?? '');
+      })
+      .catch((e) => onError(e instanceof ApiError ? e.message : t('updateFailedFallback')))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
+
+  const save = async () => {
+    setBusy(true);
+    onError(null);
+    try {
+      await api(`/users/${user.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ sin: sin?.trim() ? sin.trim() : null }),
+      });
+      onDone(t('sinUpdatedNotice', { name: `${user.firstName} ${user.lastName}` }));
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : t('updateFailedFallback'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="form-row" style={{ alignItems: 'flex-end', padding: '8px 0' }}>
+      <label className="field" style={{ minWidth: 220 }}>
+        {t('sinOptionalLabel')}
+        <input
+          value={loading ? t('loadingSin') : sin ?? ''}
+          onChange={(e) => setSin(e.target.value)}
+          placeholder={t('sinPlaceholder')}
+          disabled={loading}
+        />
+      </label>
+      <button className="btn btn-primary" onClick={save} disabled={loading || busy}>
+        {t('sinSaveButton')}
+      </button>
+      <button className="btn btn-ghost" onClick={() => onDone(null)}>
+        {t('sinCancelButton')}
+      </button>
     </div>
   );
 }
@@ -222,6 +313,7 @@ function AddStaff({
   const [password, setPassword] = useState('');
   const [pharmacyId, setPharmacyId] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
+  const [sin, setSin] = useState('');
   const [busy, setBusy] = useState(false);
 
   const roleOptions = isOwner ? [...NON_OWNER_ROLES, 'SYSTEM_OWNER'] : NON_OWNER_ROLES;
@@ -248,6 +340,7 @@ function AddStaff({
           password,
           ...(needsLocation ? { pharmacyId } : {}),
           ...(licenseNumber.trim() ? { licenseNumber: licenseNumber.trim() } : {}),
+          ...(sin.trim() ? { sin: sin.trim() } : {}),
         }),
       });
       setEmail('');
@@ -255,6 +348,7 @@ function AddStaff({
       setLastName('');
       setPassword('');
       setLicenseNumber('');
+      setSin('');
       onCreated(t('staffAccountCreatedNotice'));
     } catch (e) {
       onError(e instanceof ApiError ? e.message : t('failedToCreateStaff'));
@@ -314,6 +408,10 @@ function AddStaff({
         <label className="field">
           {t('licenseNumberOptionalLabel')}
           <input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder={t('licenseNumberPlaceholder')} />
+        </label>
+        <label className="field">
+          {t('sinOptionalLabel')}
+          <input value={sin} onChange={(e) => setSin(e.target.value)} placeholder={t('sinPlaceholder')} />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || busy}>
           {!busy && <Plus size={16} />}

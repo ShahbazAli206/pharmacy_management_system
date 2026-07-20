@@ -128,8 +128,100 @@ export function Admin() {
       <ActivityTimeline />
       <BarcodeTool />
       {can('custom_field:manage') && <CustomFieldsPanel />}
+      {can('pharmacy:manage') && <IpAllowlistPanel />}
+      {can('system:monitor') && <ScheduledJobsPanel />}
       <BackupsPanel />
     </div>
+  );
+}
+
+interface PharmacyOpt {
+  id: string;
+  name: string;
+  code: string;
+  allowedIpRanges: string | null;
+}
+
+function IpAllowlistPanel() {
+  const { t } = useI18n();
+  const [locations, setLocations] = useState<PharmacyOpt[]>([]);
+  const [pharmacyId, setPharmacyId] = useState('');
+  const [value, setValue] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api<PharmacyOpt[]>('/pharmacies')
+      .then((rows) => {
+        setLocations(rows);
+        if (rows[0]) {
+          setPharmacyId(rows[0].id);
+          setValue(rows[0].allowedIpRanges ?? '');
+        }
+      })
+      .catch((e) => setError((e as Error).message));
+  }, []);
+
+  const selectLocation = (id: string) => {
+    setPharmacyId(id);
+    setValue(locations.find((l) => l.id === id)?.allowedIpRanges ?? '');
+    setNotice(null);
+    setError(null);
+  };
+
+  const save = async () => {
+    if (!pharmacyId) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await api<{ allowedIpRanges: string | null }>(`/pharmacies/${pharmacyId}/ip-allowlist`, {
+        method: 'PATCH',
+        body: JSON.stringify({ allowedIpRanges: value.trim() || null }),
+      });
+      setLocations((prev) => prev.map((l) => (l.id === pharmacyId ? { ...l, allowedIpRanges: updated.allowedIpRanges } : l)));
+      const name = locations.find((l) => l.id === pharmacyId)?.name ?? '';
+      setNotice(t('ipAllowlistSavedNotice', { name }));
+    } catch (e) {
+      setError(e instanceof ApiError ? (e.status === 400 ? t('ipAllowlistInvalidNotice') : e.message) : t('updateFailedFallback'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel">
+      <h2>{t('ipAllowlistHeading')}</h2>
+      <p className="muted" style={{ marginBottom: 12 }}>
+        {t('ipAllowlistSubtitle')}
+      </p>
+      {notice && (
+        <div className="alert" style={{ background: '#dcfce7', color: '#166534' }}>
+          {notice}
+        </div>
+      )}
+      {error && <div className="alert alert-error">{error}</div>}
+      <div className="form-row">
+        <label className="field" style={{ minWidth: 220 }}>
+          {t('ipAllowlistLocationLabel')}
+          <select value={pharmacyId} onChange={(e) => selectLocation(e.target.value)}>
+            {locations.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name} ({l.code})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field" style={{ minWidth: 320, flex: 1 }}>
+          {t('ipAllowlistFieldLabel')}
+          <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={t('ipAllowlistPlaceholder')} />
+        </label>
+        <button className="btn btn-primary" onClick={save} disabled={!pharmacyId || busy}>
+          {t('ipAllowlistSaveButton')}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -307,6 +399,45 @@ function BarcodeTool() {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
       {svg && <div dangerouslySetInnerHTML={{ __html: svg }} />}
+    </section>
+  );
+}
+
+function ScheduledJobsPanel() {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ pharmaciesProcessed: number; notificationsQueued: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setResult(await api('/admin/jobs/daily-sales-summary', { method: 'POST', body: JSON.stringify({}) }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel">
+      <div className="page-head row">
+        <h2 style={{ margin: 0 }}>{t('scheduledJobsHeading')}</h2>
+        <button className="btn btn-primary" onClick={run} disabled={busy}>
+          {busy ? t('runningEllipsis') : t('runDailySalesSummaryNowButton')}
+        </button>
+      </div>
+      <p className="muted" style={{ marginTop: 4 }}>
+        {t('scheduledJobsDesc')}
+      </p>
+      {error && <div className="alert alert-error">{error}</div>}
+      {result && (
+        <p className="muted">
+          {t('dailySalesSummaryResultNotice', { locations: result.pharmaciesProcessed, count: result.notificationsQueued })}
+        </p>
+      )}
     </section>
   );
 }

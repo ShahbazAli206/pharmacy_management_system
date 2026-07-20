@@ -8,6 +8,16 @@ import { fetchLocations, type LocationOption } from '../lib/locations';
 import type { TranslationKey } from '../lib/i18n/translations';
 import type { BudgetVariance, CashFlowForecast, ExpenseRow, PLReport } from '../lib/types';
 
+interface CraRemittanceRow {
+  id: string;
+  pharmacy: { name: string; code: string };
+  description: string;
+  amountCents: number;
+  dueDate: string;
+  daysUntilDue: number;
+  overdue: boolean;
+}
+
 const CATEGORIES = [
   'RENT_OCCUPANCY', 'PAYROLL', 'UTILITIES', 'BANK_FINANCING', 'INSURANCE',
   'PROFESSIONAL_FEES', 'MARKETING', 'IT_TECHNOLOGY', 'INVENTORY_PURCHASES',
@@ -44,6 +54,7 @@ export function Finance() {
   const [ap, setAp] = useState<ApAging | null>(null);
   const [variance, setVariance] = useState<BudgetVariance | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlowForecast | null>(null);
+  const [craRemittances, setCraRemittances] = useState<CraRemittanceRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -63,18 +74,20 @@ export function Finance() {
     if (!ready) return;
     const q = isOwner && pharmacyId ? `?pharmacyId=${pharmacyId}` : '';
     try {
-      const [plData, exp, apData, varianceData, cashFlowData] = await Promise.all([
+      const [plData, exp, apData, varianceData, cashFlowData, craData] = await Promise.all([
         api<PLReport>(`/finance/pl${q}`).catch(() => null),
         api<ExpenseRow[]>(`/finance/expenses${q}`),
         api<ApAging>(`/finance/ap-aging${q}`).catch(() => null),
         api<BudgetVariance>(`/finance/budget-variance${q}`).catch(() => null),
         api<CashFlowForecast>(`/finance/cash-flow-forecast${q}`).catch(() => null),
+        api<CraRemittanceRow[]>(`/finance/cra-remittances${q}`).catch(() => []),
       ]);
       setPl(plData);
       setExpenses(exp);
       setAp(apData);
       setVariance(varianceData);
       setCashFlow(cashFlowData);
+      setCraRemittances(craData);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -208,6 +221,41 @@ export function Finance() {
                 />
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {craRemittances.length > 0 && (
+        <section className="panel">
+          <h2>{t('craRemittancesHeading')}</h2>
+          <p className="muted" style={{ marginTop: -8, marginBottom: 12 }}>{t('craRemittancesDesc')}</p>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t('colDescription')}</th>
+                  {isOwner && <th>{t('locationLabel')}</th>}
+                  <th className="num">{t('colAmount')}</th>
+                  <th>{t('colDueDate')}</th>
+                  <th>{t('colStatus')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {craRemittances.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.description}</td>
+                    {isOwner && <td>{r.pharmacy.code}</td>}
+                    <td className="num">{money(r.amountCents)}</td>
+                    <td>{new Date(r.dueDate).toLocaleDateString('en-CA')}</td>
+                    <td>
+                      <span className={`badge ${r.overdue ? 'badge-danger' : 'badge-warn'}`}>
+                        {r.overdue ? t('overdueBadge') : t('dueInDaysBadge', { days: r.daysUntilDue })}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}

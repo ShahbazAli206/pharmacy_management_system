@@ -38,6 +38,12 @@ interface IngestResult {
   locationsAffected: number;
 }
 
+interface PollResult {
+  provider: string;
+  fetched: number;
+  ingested: number;
+}
+
 interface OwnerLocation {
   id: string;
   name: string;
@@ -127,6 +133,7 @@ function RecallsTab({
   const [reason, setReason] = useState('');
   const [risk, setRisk] = useState<RecallRisk>('TYPE_I');
   const [busy, setBusy] = useState(false);
+  const [polling, setPolling] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -170,11 +177,34 @@ function RecallsTab({
     }
   };
 
+  const pollFeed = async () => {
+    setPolling(true);
+    onError(null);
+    onNotice(null);
+    try {
+      const res = await api<PollResult>('/recalls/poll', { method: 'POST', body: JSON.stringify({}) });
+      onNotice(t('recallPolledNotice', { fetched: res.fetched, ingested: res.ingested }));
+      await load();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : t('pollFailedFallback'));
+    } finally {
+      setPolling(false);
+    }
+  };
+
   return (
     <>
       {can('recall:manage') && (
         <section className="panel">
-          <h2>{t('ingestRecallHeading')}</h2>
+          <div className="page-head row">
+            <h2 style={{ margin: 0 }}>{t('ingestRecallHeading')}</h2>
+            <button className="btn btn-ghost" onClick={pollFeed} disabled={polling}>
+              {polling ? t('pollingEllipsis') : t('pollHealthCanadaButton')}
+            </button>
+          </div>
+          <p className="muted" style={{ marginTop: 0, marginBottom: 12 }}>
+            {t('recallPollDesc')}
+          </p>
           <div className="form-grid">
             <label className="field">
               {t('recallNumberLabel')}

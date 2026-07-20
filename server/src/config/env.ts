@@ -16,6 +16,12 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(8, 'JWT_REFRESH_SECRET too short'),
   JWT_ACCESS_TTL: z.coerce.number().default(900),
   JWT_REFRESH_TTL: z.coerce.number().default(604800),
+  // True sliding inactivity timeout (spec §13.1: "15 minutes inactivity for
+  // pharmacist-role users") — distinct from JWT_ACCESS_TTL, which is a fixed
+  // expiry from token issuance. Enforced in middleware/auth.ts against
+  // User.lastActivityAt, independent of whether the access token itself has
+  // expired yet. Seconds, same unit as the JWT TTLs.
+  SESSION_INACTIVITY_TIMEOUT: z.coerce.number().default(900),
   FIELD_ENCRYPTION_KEY: z
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, 'FIELD_ENCRYPTION_KEY must be 64 hex chars (32 bytes)'),

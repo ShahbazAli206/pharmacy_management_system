@@ -167,6 +167,37 @@ export async function taxSummary(auth: AuthContext, requestedPharmacyId?: string
   };
 }
 
+/**
+ * CPP/EI remittance tracking (spec §11): unpaid PAYROLL expenses with their
+ * (auto-computed or explicit) CRA due date, so the Finance page can show
+ * what's coming due without waiting for the alert sweep to fire.
+ */
+export async function craRemittances(auth: AuthContext, requestedPharmacyId?: string, now = new Date()) {
+  const pharmacyId = isOwner(auth) ? requestedPharmacyId : auth.locationId ?? undefined;
+  if (pharmacyId) assertLocationAccess(auth, pharmacyId);
+
+  const rows = await prisma.expense.findMany({
+    where: {
+      category: 'PAYROLL',
+      status: { in: ['SUBMITTED', 'APPROVED'] },
+      dueDate: { not: null },
+      ...(pharmacyId ? { pharmacyId } : {}),
+    },
+    include: { pharmacy: { select: { name: true, code: true } } },
+    orderBy: { dueDate: 'asc' },
+  });
+
+  return rows.map((e) => ({
+    id: e.id,
+    pharmacy: e.pharmacy,
+    description: e.description,
+    amountCents: e.amountCents,
+    dueDate: e.dueDate,
+    daysUntilDue: Math.ceil((e.dueDate!.getTime() - now.getTime()) / 86_400_000),
+    overdue: e.dueDate!.getTime() < now.getTime(),
+  }));
+}
+
 export const EXPENSE_CATEGORIES = Object.values(ExpenseCategory);
 
 const monthKey = (d: Date) => d.toISOString().slice(0, 7); // "YYYY-MM"

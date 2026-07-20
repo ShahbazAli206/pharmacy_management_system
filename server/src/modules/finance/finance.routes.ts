@@ -10,6 +10,7 @@ import { toCsv, centsToDollars } from '../../utils/csv';
 import { expensesPdfBuffer, plStatementPdfBuffer } from '../../utils/pdf';
 import * as expenses from './expenses.service';
 import * as finance from './finance.service';
+import { runCraRemittanceEscalation } from '../../services/craRemittance';
 
 const router = Router();
 router.use(authenticate);
@@ -204,6 +205,28 @@ router.get(
   asyncHandler(async (req, res) => {
     if (!req.auth) throw unauthorized();
     res.json(await finance.apAging(req.auth, s(req.query.pharmacyId)));
+  }),
+);
+
+// ---- CPP/EI (CRA) remittance tracking ----
+router.get(
+  '/cra-remittances',
+  requirePermission(PERMISSIONS.FINANCE_READ),
+  asyncHandler(async (req, res) => {
+    if (!req.auth) throw unauthorized();
+    res.json(await finance.craRemittances(req.auth, s(req.query.pharmacyId)));
+  }),
+);
+
+// Manual trigger for the CRA-remittance escalation sweep — the scheduler
+// runs this automatically once a day; exposed for testing.
+router.post(
+  '/cra-remittances/escalate',
+  requirePermission(PERMISSIONS.SYSTEM_MONITOR),
+  asyncHandler(async (req, res) => {
+    const result = await runCraRemittanceEscalation();
+    await recordAudit({ action: 'CREATE', entity: 'CraRemittanceEscalation', metadata: result, req });
+    res.status(201).json(result);
   }),
 );
 

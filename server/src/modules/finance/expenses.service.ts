@@ -3,6 +3,8 @@ import { prisma } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { badRequest, forbidden, notFound } from '../../utils/httpError';
+import { getSettings } from '../../services/settings';
+import { craRemittanceDueDate } from '../../services/craRemittance';
 
 function scopeFor(auth: AuthContext, requested?: string): string {
   const pharmacyId = isOwner(auth) ? requested : auth.locationId;
@@ -48,6 +50,17 @@ export async function listExpenses(
 
 export async function createExpense(auth: AuthContext, input: ExpenseInput) {
   const pharmacyId = scopeFor(auth, input.pharmacyId);
+  const incurredOn = new Date(input.incurredOn);
+
+  // PAYROLL entries get an auto-computed CRA remittance due date (spec §11)
+  // when the caller didn't explicitly set one — an explicit dueDate always
+  // wins, since a bookkeeper may know a better date than the generic rule.
+  let dueDate = input.dueDate ? new Date(input.dueDate) : null;
+  if (!dueDate && input.category === 'PAYROLL') {
+    const { craRemitterType } = await getSettings();
+    dueDate = craRemittanceDueDate(incurredOn, craRemitterType);
+  }
+
   return prisma.expense.create({
     data: {
       pharmacyId,
@@ -57,8 +70,8 @@ export async function createExpense(auth: AuthContext, input: ExpenseInput) {
       amountCents: input.amountCents,
       taxCents: input.taxCents ?? 0,
       vendor: input.vendor ?? null,
-      incurredOn: new Date(input.incurredOn),
-      dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      incurredOn,
+      dueDate,
       recurring: input.recurring ?? false,
       renewalDate: input.renewalDate ? new Date(input.renewalDate) : null,
       attachmentPath: input.attachmentPath ?? null,

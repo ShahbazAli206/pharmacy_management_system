@@ -355,6 +355,121 @@ Legend: [x] done · [~] partial · [ ] not started
 
 ---
 
+## PHASE 13 — Spec-compliance gaps (identified 2026-07-20 code audit vs `Pharmacy_Management_System_Requirements2.docx`)
+Items below were verified missing directly in code (not just self-reported) — real dev work,
+distinct from the already-known "needs external credentials" stubs (OCR/S3/Twilio/SendGrid/
+DocuSign — interfaces exist, only creds are missing) and from pure process items (pen test,
+UAT, DR drills, legal/regulatory sign-offs).
+
+### Sales / POS (spec §7)
+- [x] **Refund & return workflow — DONE.** New `Refund`/`RefundLine` models; amounts at/below
+  `settings.refundApprovalThresholdCents` ($50 default) complete immediately (incl. OTC stock
+  reversal via a new `restockReturn` inventory helper); above it, held `PENDING_APPROVAL` until
+  a different user with `refund:approve` decides (no self-approval) — REJECTED never touches
+  stock. Controlled substances are deliberately never auto-restocked. New `/refunds` module +
+  `GET /sales/:id` (needed so a cashier can look up an older receipt). **Client:** a Refunds tab
+  on the POS page (sale lookup, per-line refund panel, approval queue) plus a "Start a refund"
+  button on the post-sale receipt. Verified live end-to-end (auto-complete, pending→approve
+  with real stock increment, self-approval 403, reject leaves stock untouched, over-quantity
+  guard) + 4 new integration tests.
+- [x] **Daily sales summary + scheduler — DONE.** New dependency-free `services/scheduler.ts`
+  (drift-corrected daily/interval timers, only ever started from `index.ts` — never during
+  tests). `jobs/dailySalesSummary.ts` runs at 11:00 UTC, emails every location's partner(s) +
+  the owner via the existing notification pipeline (extended `dispatchPendingForPharmacy` to
+  also resolve staff `recipientUserId` contacts, not just patients). Manual trigger + Admin
+  panel for testing. Verified live (16 pharmacies processed, notifications queued and SENT).
+
+### Security / Auth (spec §13.1)
+- [x] **Session inactivity timeout — DONE.** New `SESSION_INACTIVITY_TIMEOUT` env var (default
+  900s) enforced independently of the JWT's own fixed expiry, in both `authenticate` middleware
+  *and* `/auth/refresh` — the latter matters because with equal TTLs an idle user's access token
+  would simply expire first and silently refresh, never tripping the check. Found and fixed a
+  real bug during verification: a fresh login didn't reset the activity clock, so a user
+  idle-timed-out from a prior session got immediately re-kicked on their very next request.
+  `User.lastActivityAt` (throttled write, 60s) added via migration.
+- [x] **Role-based IP whitelisting — DONE.** `Pharmacy.allowedIpRanges` (comma-separated
+  IPv4/CIDR or IPv6 literals), dependency-free `utils/ip.ts` matcher, enforced at login for
+  location-scoped roles (owner unrestricted). `PATCH /pharmacies/:id/ip-allowlist` (owner-only)
+  + an Admin console panel. Verified live: partner blocked when restricted, owner unaffected,
+  restriction lifts cleanly. 6 new unit tests.
+- [x] **SIN field + encryption — DONE.** `User.sinEnc` (AES-256-GCM, same pattern as patient
+  health-card/insurance), payroll/HR use only. Never in the staff list; only the new
+  `GET /users/:id` detail endpoint (`user:manage`) decrypts it. Staff page gained an inline
+  "manage SIN" editor. Verified round-trip live.
+
+### Patients / Compliance (spec §10, §12)
+- [x] **Recall broadcast to PICs + 15-min SLA — DONE.** `ingestRecall` now dispatches an EMAIL
+  notification to every PIC at each affected location immediately (not just a passive alert).
+  New `runRecallNotificationEscalation` sweep (every 5 min) retries delivery once and raises a
+  CRITICAL `RECALL_NOTIFICATION_SLA_BREACH` alert for anything still undelivered past 15
+  minutes. Verified live (real dispatch + a simulated stuck-notification escalation) + 2 new
+  integration tests.
+- [x] **Real MedEffect recall polling job — DONE, genuinely real (not a stub).** Health Canada
+  actually publishes recalls as a public, no-auth-required JSON dataset updated daily
+  (`open.canada.ca` dataset `d38de914-...`) — unlike OCR/S3/Twilio/DocuSign, this needed no
+  credentials to build for real. New `services/recallFeed.ts` (pluggable, still swappable) +
+  `jobs/recallPoll.ts` (2h interval, cursor-tracked via `SystemSetting`, manual trigger +
+  Recalls-page "Poll now" button). Caught a real parsing bug pre-ship: the feed's "Type I" class
+  string is textually a substring of "Type II", so naive `.includes()` misclassified every
+  Type II/III recall as Type I — fixed with exact segment matching, 5 new unit tests. Verified
+  against the live feed: fetched 1,078 real drug/health-product recalls, cursor correctly
+  returned 0 on immediate re-poll. **Known limitation, documented in code:** the feed has no DIN
+  field, only free-text product names — auto-quarantine matching (which is intentionally
+  DIN-exact, not fuzzy, for patient-safety reasons) won't fire from feed-sourced recalls; a real
+  DIN cross-reference would need the separate Health Canada Drug Product Database.
+
+### Camera (spec §9)
+- [x] **Camera video rendering — DONE (HLS; RTSP still needs an external relay, documented).**
+  New `CameraPlayer` component: native playback on Safari, `hls.js` (dynamically imported —
+  keeps it out of the main bundle for every other page) elsewhere. RTSP shows a clear
+  explanatory message rather than failing silently, since no browser can play it without a
+  server-side relay this app doesn't run. Verified the full data path live against a real
+  public HLS test stream (Apple's bipbop test asset) end-to-end; **could not visually confirm
+  in-browser rendering** — no browser-automation tool was available in this session, so treat
+  the player itself as code-reviewed and data-path-verified but not yet eyeballed running.
+
+### Finance / HR (spec §8, §11, §14)
+- [x] **CPP/EI remittance due-date tracking + alerting — DONE.** New `services/craRemittance.ts`
+  (verified against the actual CRA rule, not guessed): regular remitters due the 15th of the
+  following month, quarterly remitters due the 15th after quarter-end — threshold-1/2 remitters
+  need per-pay-period tracking this app doesn't model, so they're explicitly out of scope rather
+  than approximated. PAYROLL expenses auto-get a computed `dueDate` unless one's set explicitly.
+  Daily escalation sweep raises WARNING within 5 days, escalates the *same* alert to CRITICAL
+  once overdue (verified it doesn't duplicate). New `craRemitterType` system setting (owner
+  configurable). Caught and fixed a real UTC-drift bug during verification — the exact class of
+  bug `finance.service.ts`'s `monthStart` had already been fixed for once before, and I
+  reintroduced a fresh instance of it. Finance page gained a remittances panel. 2 unit + 4
+  integration tests.
+- [ ] QuickBooks/Sage export — buildable now; needs the exact IIF/QBO/CSV column layout pinned
+  down first, then the exporter written.
+- [ ] Payment-gateway (Moneris/Square) adapter — no pluggable interface exists yet at all
+  (unlike OCR/S3/Twilio/DocuSign); the adapter layer itself needs designing and writing before
+  it's a "plug in creds" problem.
+- [ ] Provincial/private insurance adjudication (TELUS Health, ODB, etc.) — same situation: no
+  interface exists yet, real claims/protocol logic needs to be designed and built.
+
+### Infrastructure-adjacent (spec §16 Scalability)
+- [ ] Bull/Redis job queue wiring — Redis provisioning is a config matter, but there is
+  currently zero queue-consuming code (OCR jobs, report generation) to move onto it.
+- [ ] Automated/scheduled backup job — manual `pg_dump` backup code already exists; turning it
+  into a cron-triggered scheduled job is still new code (point-in-time recovery beyond this is
+  mostly WAL-archiving infra config, not app code).
+
+### Testing (spec §16)
+- [ ] Coverage tooling (istanbul/c8/vitest coverage) + enough new tests to hit the spec's 80%
+  bar specifically on prescriptions/finance/compliance modules — no coverage tool is currently
+  configured, so the bar has never actually been measured.
+
+### Offline mode (spec §13.2) — largest single gap
+- [ ] Offline dispensing cache + sync-on-reconnect. No service worker, IndexedDB, or
+  conflict-resolution logic exists in the client at all. Substantial standalone feature, not a
+  quick add — needs its own design pass (conflict resolution strategy, what's cached, sync
+  protocol) before implementation.
+
+Legend: [x] done · [~] partial · [ ] not started
+
+---
+
 ## Cross-cutting (throughout)
 - Canadian data residency; TLS 1.3; AES-256 at rest; field-level PII encryption.
 - Append-only audit trail on every sensitive action; 10-year retention.

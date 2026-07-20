@@ -52,6 +52,9 @@ export const PERMISSIONS = {
   FINANCE_WRITE: 'finance:write',
   EXPENSE_APPROVE: 'expense:approve',
 
+  // Refunds & returns (spec §7)
+  REFUND_APPROVE: 'refund:approve',
+
   // Cameras & comms (Phase 5)
   CAMERA_VIEW: 'camera:view',
   CAMERA_MANAGE: 'camera:manage',
@@ -130,6 +133,7 @@ export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   [PERMISSIONS.FINANCE_READ]: 'View financial data',
   [PERMISSIONS.FINANCE_WRITE]: 'Create and edit financial entries',
   [PERMISSIONS.EXPENSE_APPROVE]: 'Approve or reject submitted expenses',
+  [PERMISSIONS.REFUND_APPROVE]: 'Approve or reject refunds above the approval threshold',
   [PERMISSIONS.CAMERA_VIEW]: 'View camera feeds',
   [PERMISSIONS.CAMERA_MANAGE]: 'Register and configure cameras',
   [PERMISSIONS.MESSAGE_SEND]: 'Send internal messages',
@@ -193,6 +197,7 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.RECALL_READ,
     PERMISSIONS.RECALL_MANAGE,
     PERMISSIONS.EXPENSE_APPROVE,
+    PERMISSIONS.REFUND_APPROVE,
     PERMISSIONS.CAMERA_VIEW,
     PERMISSIONS.CAMERA_MANAGE,
     PERMISSIONS.MESSAGE_SEND,
@@ -231,6 +236,7 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     PERMISSIONS.NARCOTICS_WRITE,
     PERMISSIONS.RECALL_READ,
     PERMISSIONS.RECALL_MANAGE,
+    PERMISSIONS.REFUND_APPROVE,
     PERMISSIONS.CAMERA_VIEW,
     PERMISSIONS.MESSAGE_SEND,
     PERMISSIONS.NOTIFICATION_MANAGE,

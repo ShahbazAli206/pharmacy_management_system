@@ -255,6 +255,7 @@ export interface CameraRow {
   placement: string;
   brand: string | null;
   ipAddress: string;
+  streamUrl: string | null;
   status: 'ONLINE' | 'OFFLINE' | 'UNKNOWN';
   lastSeenAt: string | null;
   pharmacy: { name: string; code: string };
@@ -379,6 +380,29 @@ export interface SaleResponse {
     lineTotalCents: number;
     taxable: boolean;
   }>;
+}
+
+export interface RefundLineRow {
+  id: string;
+  saleLineId: string;
+  quantity: number;
+  amountCents: number;
+  saleLine: { description: string; itemType: SaleItemType; quantity: number; unitPriceCents: number };
+}
+
+export type RefundStatus = 'PENDING_APPROVAL' | 'COMPLETED' | 'REJECTED';
+
+export interface RefundRow {
+  id: string;
+  saleId: string;
+  amountCents: number;
+  reason: string;
+  status: RefundStatus;
+  requestedByUserId: string;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  lines: RefundLineRow[];
 }
 
 export interface DailySummary {

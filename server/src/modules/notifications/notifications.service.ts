@@ -53,28 +53,37 @@ export async function generateRefillReminders(auth: AuthContext, requestedPharma
   return { created };
 }
 
-/** Dispatch PENDING notifications through the configured provider. */
-export async function dispatchPending(auth: AuthContext, requestedPharmacyId?: string) {
-  const pharmacyId = scopeFor(auth, requestedPharmacyId);
+/**
+ * Dispatch PENDING notifications through the configured provider for one
+ * pharmacy. Resolves the "to" address from either a patient (patientId — CASL
+ * refill reminders) or a staff member (recipientUserId — e.g. the daily sales
+ * summary, spec §7). No AuthContext needed, so scheduled jobs can call this
+ * directly; the authenticated route below wraps it with the usual scoping.
+ */
+export async function dispatchPendingForPharmacy(pharmacyId: string) {
   const pending = await prisma.notification.findMany({
     where: { pharmacyId, status: 'PENDING' },
     take: 200,
   });
 
-  // Notification.patientId is a plain column (no relation); load contacts in one query.
   const patientIds = [...new Set(pending.map((n) => n.patientId).filter((id): id is string => !!id))];
   const patients = await prisma.patient.findMany({
     where: { id: { in: patientIds } },
     select: { id: true, phone: true, email: true },
   });
-  const contactById = new Map(patients.map((p) => [p.id, p]));
+  const patientById = new Map(patients.map((p) => [p.id, p]));
+
+  const userIds = [...new Set(pending.map((n) => n.recipientUserId).filter((id): id is string => !!id))];
+  const users = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } });
+  const userById = new Map(users.map((u) => [u.id, u]));
 
   const provider = getNotificationProvider();
   let sent = 0;
   let failed = 0;
   for (const n of pending) {
-    const contact = n.patientId ? contactById.get(n.patientId) : undefined;
-    const to = n.channel === 'SMS' ? contact?.phone : contact?.email;
+    const patient = n.patientId ? patientById.get(n.patientId) : undefined;
+    const staff = n.recipientUserId ? userById.get(n.recipientUserId) : undefined;
+    const to = n.channel === 'SMS' ? patient?.phone : patient?.email ?? staff?.email;
     if (!to) {
       await prisma.notification.update({ where: { id: n.id }, data: { status: 'FAILED', error: 'No contact on file' } });
       failed++;
@@ -90,6 +99,12 @@ export async function dispatchPending(auth: AuthContext, requestedPharmacyId?: s
     result.ok ? sent++ : failed++;
   }
   return { attempted: pending.length, sent, failed, provider: provider.name };
+}
+
+/** Dispatch PENDING notifications through the configured provider. */
+export async function dispatchPending(auth: AuthContext, requestedPharmacyId?: string) {
+  const pharmacyId = scopeFor(auth, requestedPharmacyId);
+  return dispatchPendingForPharmacy(pharmacyId);
 }
 
 export async function listNotifications(auth: AuthContext, requestedPharmacyId?: string) {

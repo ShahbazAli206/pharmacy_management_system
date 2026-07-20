@@ -4,6 +4,37 @@ import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
 import { badRequest, notFound } from '../../utils/httpError';
 import { raiseAlert } from '../../services/alerts';
+import { dispatchPendingForPharmacy } from '../notifications/notifications.service';
+
+/** Recall notifications must reach affected PICs within this window (spec §12). */
+export const RECALL_NOTIFICATION_SLA_MS = 15 * 60 * 1000;
+
+/**
+ * Push an emergency recall notification to every PIC at an affected pharmacy
+ * (spec §12: "drug recall notification pushed to all affected location PICs
+ * within 15 minutes") and dispatch it immediately — not just queued. The SLA
+ * escalation sweep (runRecallNotificationEscalation, below) is the backstop
+ * for the case where dispatch itself is delayed or fails.
+ */
+async function notifyPicsOfRecall(pharmacyId: string, recallNumber: string, productName: string, reason: string) {
+  const pics = await prisma.user.findMany({
+    where: { pharmacyId, isActive: true, role: { name: 'PHARMACIST_IN_CHARGE' } },
+  });
+  for (const pic of pics) {
+    await prisma.notification.create({
+      data: {
+        pharmacyId,
+        recipientUserId: pic.id,
+        channel: 'EMAIL',
+        type: 'RECALL',
+        subject: `URGENT: Drug recall ${recallNumber} affects your inventory`,
+        message: `Recall ${recallNumber}: ${productName} — ${reason}. Affected stock has been quarantined at your location. Review the Recalls page immediately.`,
+      },
+    });
+  }
+  if (pics.length > 0) await dispatchPendingForPharmacy(pharmacyId);
+  return pics.length;
+}
 
 export interface IngestRecallInput {
   recallNumber: string;
@@ -67,6 +98,7 @@ export async function ingestRecall(input: IngestRecallInput) {
           relatedType: 'DrugRecall',
           relatedId: recall.id,
         });
+        await notifyPicsOfRecall(item.pharmacyId, recall.recallNumber, recall.productName, recall.reason);
         quarantined++;
       }
     }
@@ -105,4 +137,50 @@ export async function updateQuarantine(
     where: { id },
     data: { status, clearedAt: new Date() },
   });
+}
+
+/**
+ * SLA backstop for recall notifications (spec §12: within 15 minutes). Finds
+ * RECALL-type notifications still not SENT more than 15 minutes after
+ * creation, retries dispatch once (covers a transient provider failure), and
+ * for anything still undelivered after that raises a CRITICAL compliance
+ * alert so a human notices — this is deliberately escalation, not a silent
+ * retry loop that could paper over a real delivery outage.
+ */
+export async function runRecallNotificationEscalation(now = new Date()) {
+  const overdue = await prisma.notification.findMany({
+    where: {
+      type: 'RECALL',
+      status: { in: ['PENDING', 'FAILED'] },
+      createdAt: { lte: new Date(now.getTime() - RECALL_NOTIFICATION_SLA_MS) },
+    },
+  });
+
+  const byPharmacy = new Map<string, typeof overdue>();
+  for (const n of overdue) {
+    if (!n.pharmacyId) continue;
+    if (!byPharmacy.has(n.pharmacyId)) byPharmacy.set(n.pharmacyId, []);
+    byPharmacy.get(n.pharmacyId)!.push(n);
+  }
+
+  let escalated = 0;
+  for (const [pharmacyId, notifications] of byPharmacy) {
+    await dispatchPendingForPharmacy(pharmacyId); // one retry attempt
+
+    const stillStuck = await prisma.notification.findMany({
+      where: { id: { in: notifications.map((n) => n.id) }, status: { in: ['PENDING', 'FAILED'] } },
+    });
+    for (const n of stillStuck) {
+      await raiseAlert({
+        pharmacyId,
+        type: 'RECALL_NOTIFICATION_SLA_BREACH',
+        severity: 'CRITICAL',
+        message: `Recall notification (id ${n.id}) has not been delivered within the 15-minute SLA — status: ${n.status}.`,
+        relatedType: 'Notification',
+        relatedId: n.id,
+      });
+      escalated++;
+    }
+  }
+  return { checked: overdue.length, escalated };
 }

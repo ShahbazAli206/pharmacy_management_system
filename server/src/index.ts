@@ -1,6 +1,7 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { disconnectPrisma, prisma } from './config/prisma';
+import { startScheduledJobs, stopScheduledJobs } from './jobs';
 
 async function main() {
   // Verify DB connectivity at boot so failures are obvious, not deferred.
@@ -12,9 +13,14 @@ async function main() {
     console.log(`Pharmacy API listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
   });
 
+  // Only the real running process starts timers — never imported by app.ts,
+  // so the test suite (which only ever calls createApp()) has none of this.
+  startScheduledJobs();
+
   const shutdown = async (signal: string) => {
     // eslint-disable-next-line no-console
     console.log(`\n${signal} received, shutting down...`);
+    stopScheduledJobs();
     server.close();
     await disconnectPrisma();
     process.exit(0);
