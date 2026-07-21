@@ -405,19 +405,32 @@ function BarcodeTool() {
 
 function ScheduledJobsPanel() {
   const { t } = useI18n();
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ pharmaciesProcessed: number; notificationsQueued: number } | null>(null);
+  const [busy, setBusy] = useState<'summary' | 'backup' | null>(null);
+  const [summaryResult, setSummaryResult] = useState<{ pharmaciesProcessed: number; notificationsQueued: number } | null>(null);
+  const [backupResult, setBackupResult] = useState<{ backup: { filename: string }; deleted: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const run = async () => {
-    setBusy(true);
+  const runSummary = async () => {
+    setBusy('summary');
     setError(null);
     try {
-      setResult(await api('/admin/jobs/daily-sales-summary', { method: 'POST', body: JSON.stringify({}) }));
+      setSummaryResult(await api('/admin/jobs/daily-sales-summary', { method: 'POST', body: JSON.stringify({}) }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setBusy(false);
+      setBusy(null);
+    }
+  };
+
+  const runBackup = async () => {
+    setBusy('backup');
+    setError(null);
+    try {
+      setBackupResult(await api('/admin/jobs/automated-backup', { method: 'POST', body: JSON.stringify({}) }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -425,17 +438,27 @@ function ScheduledJobsPanel() {
     <section className="panel">
       <div className="page-head row">
         <h2 style={{ margin: 0 }}>{t('scheduledJobsHeading')}</h2>
-        <button className="btn btn-primary" onClick={run} disabled={busy}>
-          {busy ? t('runningEllipsis') : t('runDailySalesSummaryNowButton')}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" onClick={runSummary} disabled={busy !== null}>
+            {busy === 'summary' ? t('runningEllipsis') : t('runDailySalesSummaryNowButton')}
+          </button>
+          <button className="btn" onClick={runBackup} disabled={busy !== null}>
+            {busy === 'backup' ? t('runningEllipsis') : t('runAutomatedBackupNowButton')}
+          </button>
+        </div>
       </div>
       <p className="muted" style={{ marginTop: 4 }}>
         {t('scheduledJobsDesc')}
       </p>
       {error && <div className="alert alert-error">{error}</div>}
-      {result && (
+      {summaryResult && (
         <p className="muted">
-          {t('dailySalesSummaryResultNotice', { locations: result.pharmaciesProcessed, count: result.notificationsQueued })}
+          {t('dailySalesSummaryResultNotice', { locations: summaryResult.pharmaciesProcessed, count: summaryResult.notificationsQueued })}
+        </p>
+      )}
+      {backupResult && (
+        <p className="muted">
+          {t('automatedBackupResultNotice', { filename: backupResult.backup.filename, deleted: backupResult.deleted })}
         </p>
       )}
     </section>

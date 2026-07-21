@@ -86,3 +86,22 @@ export function resolveBackupPath(filename: string): string {
   if (!FILENAME_RE.test(filename)) throw badRequest('Invalid backup filename');
   return path.join(backupDir(), filename);
 }
+
+/**
+ * Deletes backups older than `retentionDays` (by filesystem mtime). Used by
+ * the automated daily backup job — without this, "automated backups" would
+ * grow disk usage unboundedly forever. Only ever touches files matching our
+ * own generated filename pattern (see FILENAME_RE), same guard as download.
+ */
+export async function pruneOldBackups(retentionDays: number): Promise<{ deleted: number }> {
+  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  const all = await listBackups();
+  let deleted = 0;
+  for (const b of all) {
+    if (new Date(b.createdAt).getTime() < cutoff) {
+      await fs.rm(resolveBackupPath(b.filename), { force: true });
+      deleted++;
+    }
+  }
+  return { deleted };
+}

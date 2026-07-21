@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { AuthContext } from '../../types/express';
 import { assertLocationAccess, isOwner } from '../../middleware/rbac';
-import { badRequest, forbidden, notFound } from '../../utils/httpError';
+import { badRequest, notFound } from '../../utils/httpError';
 import { checkInteractions, InteractionAlert, parseClasses } from '../../services/drugInteractions';
 import { decrementStockFEFO } from '../inventory/inventory.service';
 import { postNarcoticTxn } from '../narcotics/narcotics.service';
@@ -146,6 +146,13 @@ export async function getPrescription(auth: AuthContext, id: string) {
 export interface DispenseInput {
   quantity?: number;
   counsellingNotes?: string;
+  /**
+   * Client-generated key for a dispense queued offline and replayed on
+   * reconnect (spec §13.2). A retried sync with the same key — e.g. the
+   * client never saw the response before losing connection again — returns
+   * the original result instead of dispensing the same fill twice.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -153,6 +160,23 @@ export interface DispenseInput {
  * dispensing event, and advances refill count / status. Runs in a transaction.
  */
 export async function dispense(auth: AuthContext, prescriptionId: string, input: DispenseInput) {
+  if (input.idempotencyKey) {
+    const existing = await prisma.dispensingRecord.findUnique({
+      where: { offlineSyncKey: input.idempotencyKey },
+      include: { prescription: true },
+    });
+    if (existing) {
+      assertLocationAccess(auth, existing.prescription.pharmacyId);
+      const fillsAllowed = 1 + existing.prescription.refillsAuthorized;
+      return {
+        record: existing,
+        refillsRemaining: fillsAllowed - existing.prescription.refillsUsed,
+        isControlled: existing.prescription.isControlled,
+        replayed: true,
+      };
+    }
+  }
+
   const rx = await prisma.prescription.findUnique({ where: { id: prescriptionId } });
   if (!rx) throw notFound('Prescription not found');
   assertLocationAccess(auth, rx.pharmacyId);
@@ -177,6 +201,7 @@ export async function dispense(auth: AuthContext, prescriptionId: string, input:
         expiryDate: lot.expiryDate,
         stockLotId: lot.primaryLotId,
         counsellingNotes: input.counsellingNotes ?? null,
+        offlineSyncKey: input.idempotencyKey ?? null,
       },
     });
 
@@ -206,10 +231,4 @@ export async function dispense(auth: AuthContext, prescriptionId: string, input:
 
     return { record, refillsRemaining: fillsAllowed - refillsUsed, isControlled: rx.isControlled };
   });
-}
-
-export function assertDispensePermission(auth: AuthContext) {
-  if (!auth.permissions.has('prescription:dispense')) {
-    throw forbidden('Dispensing requires a pharmacist role');
-  }
 }

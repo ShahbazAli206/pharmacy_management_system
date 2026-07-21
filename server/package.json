@@ -17,6 +17,7 @@
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:all": "npm run test && npm run test:integration",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "loadtest": "ts-node --transpile-only loadtest/loadtest.ts"
   },
   "prisma": {
@@ -49,6 +50,7 @@
     "@types/pdfkit": "^0.17.6",
     "@types/qrcode-generator": "^0.0.16",
     "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^2.1.9",
     "autocannon": "^8.0.0",
     "prisma": "^5.22.0",
     "supertest": "^7.2.2",

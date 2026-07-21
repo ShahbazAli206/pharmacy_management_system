@@ -4,6 +4,7 @@ import { runDailySalesSummaryJob } from './dailySalesSummary';
 import { runRecallNotificationEscalation } from '../modules/recalls/recalls.service';
 import { runRecallPollJob } from './recallPoll';
 import { runCraRemittanceEscalation } from '../services/craRemittance';
+import { runAutomatedBackupJob } from './automatedBackup';
 
 /**
  * Every scheduled job's actual work runs through the background job queue
@@ -24,6 +25,9 @@ queue.process('recall-feed-poll', async () => {
 });
 queue.process('cra-remittance-escalation', async () => {
   await runCraRemittanceEscalation();
+});
+queue.process('automated-backup', async () => {
+  await runAutomatedBackupJob();
 });
 
 let handles: ScheduledJobHandle[] = [];
@@ -52,6 +56,11 @@ export function startScheduledJobs(): void {
     // Same time as the daily sales summary — both are once-a-day housekeeping.
     scheduleDailyUTC('cra-remittance-escalation', 12, 0, async () => {
       await queue.add('cra-remittance-escalation', {});
+    }),
+    // 09:00 UTC — before the other jobs, off-peak, well before business hours
+    // across Canadian time zones (spec §13.2: automated daily backups).
+    scheduleDailyUTC('automated-backup', 9, 0, async () => {
+      await queue.add('automated-backup', {});
     }),
   ];
 }

@@ -480,22 +480,62 @@ UAT, DR drills, legal/regulatory sign-offs).
   than run inline from the timer — the real trigger/execution split a job queue exists for.
   `bull` added as a real dependency (its own bundled TS types, no `@types/bull` needed). 4 unit
   tests + a clean server boot with zero warnings.
-- [ ] Automated/scheduled backup job — manual `pg_dump` backup code already exists; turning it
-  into a cron-triggered scheduled job is still new code (point-in-time recovery beyond this is
-  mostly WAL-archiving infra config, not app code).
+- [x] **Automated/scheduled backup job — DONE.** New `pruneOldBackups(retentionDays)` in
+  `services/backup.ts` + `jobs/automatedBackup.ts`, scheduled daily at 09:00 UTC through the
+  queue above. New `BACKUP_RETENTION_DAYS` env var (default 30). Deliberately doesn't attempt
+  point-in-time recovery or the "geographically separate" half of spec §13.2 — those are
+  hosting/infra decisions (where `BACKUP_DIR` actually points), not app code. 3 unit tests
+  (retention-window boundary, nothing-to-prune, never touches a non-matching filename) using a
+  real temp directory + `fs.utimes` — no pg_dump needed to test the pruning logic itself.
 
 ### Testing (spec §16)
-- [ ] Coverage tooling (istanbul/c8/vitest coverage) + enough new tests to hit the spec's 80%
-  bar specifically on prescriptions/finance/compliance modules — no coverage tool is currently
-  configured, so the bar has never actually been measured.
+- [x] **Coverage tooling + 80%+ on all three named modules — DONE, measured for real.** New
+  `vitest.coverage.config.ts` (`npm run test:coverage`) runs unit + integration together — unit
+  tests alone barely touch the service files, since most of their branches only execute via a
+  live DB. Baseline (before this pass): prescriptions.service.ts 1.27%, finance.service.ts
+  8.68%, compliance.service.ts 18.71%. Three new integration test files later:
+  **prescriptions.service.ts 98.68%, finance.service.ts 99.03% (expenses.service.ts 98.8%),
+  compliance.service.ts 97.32%** — all comfortably past the spec's 80% bar. Also found and
+  deleted one genuinely dead function (`assertDispensePermission`, never called anywhere,
+  redundant with the route's own `requirePermission` gate) rather than writing a pointless test
+  for it. Overall project coverage moved 53.39% → 65.71% as a side effect; other modules weren't
+  individually chased since the spec names only these three.
 
 ### Offline mode (spec §13.2) — largest single gap
-- [ ] Offline dispensing cache + sync-on-reconnect. No service worker, IndexedDB, or
-  conflict-resolution logic exists in the client at all. Substantial standalone feature, not a
-  quick add — needs its own design pass (conflict resolution strategy, what's cached, sync
-  protocol) before implementation.
+- [x] **Offline dispensing cache + sync-on-reconnect — DONE, verified end-to-end against a real
+  server.** Three parts: (1) a service worker (`public/sw.js`, stale-while-revalidate for
+  same-origin static assets, production-only — never registered in dev, where it would fight
+  Vite's HMR) so the app shell itself still loads with zero connectivity; (2) a dependency-free
+  IndexedDB wrapper (`lib/offline/db.ts`) holding a cached prescription-list snapshot and a
+  queue of pending dispenses; (3) `lib/offline/offlineDispense.ts` + a `useOnlineStatus` hook —
+  a dispense attempted while offline is queued locally with a client-generated idempotency key
+  and optimistically applied to the cached list immediately, then replayed against the real API
+  the moment the `online` event fires. **Conflict/safety handling:** the server (new
+  `DispensingRecord.offlineSyncKey`, unique) returns the original result instead of
+  double-dispensing if a sync is retried after a response was lost; a job that fails for a real
+  reason (e.g. stock insufficient by the time it synced) stays queued with the error attached
+  rather than being silently dropped, so a human can resolve it. Prescriptions page now shows an
+  offline banner, a "using cached data" notice, a queued-count notice, and a per-row "queued"
+  badge. Verified two ways: a live integration test proving the idempotent-replay behavior
+  itself (dispense twice with the same key → stock decrements once, not twice, second response
+  flagged `replayed: true`), and — since this app has no client test framework at all — a
+  temporary Node script (`fake-indexeddb` + `tsx`, both `--no-save`, deleted after, matching the
+  existing PDF-verification precedent of not adding a dependency just to check something once)
+  that ran the *actual* client offline module against the real running server end-to-end: queue
+  while "offline" → confirmed the real server was untouched → sync → confirmed a genuine
+  `DispensingRecord` was created server-side, not just a local state change. **Could not verify
+  the UI itself in a real browser** (no browser-automation tool available this session) — same
+  caveat as the camera player; the module's logic is real-server-verified, the on-screen
+  rendering is not yet eyeballed.
 
 Legend: [x] done · [~] partial · [ ] not started
+
+**PHASE 13 status: all 16 items now [x] done.** Every coding-only gap identified in the
+2026-07-20 audit against the client's requirements doc is closed. What's left for
+production-readiness is exactly the "needs configuration/credentials" list already tracked
+elsewhere in this document (external provider credentials, hosting/infra, pen test, UAT,
+compliance/legal sign-offs) — see the Phase 6 "Still roadmapped" notes and the integrations
+checklist above.
 
 ---
 

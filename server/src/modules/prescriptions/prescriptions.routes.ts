@@ -30,6 +30,9 @@ const checkSchema = z.object({
 const dispenseSchema = z.object({
   quantity: z.number().int().positive().optional(),
   counsellingNotes: z.string().optional(),
+  // Present when this dispense was queued offline and is now being synced —
+  // see prescriptions.service.ts dispense() for the idempotent-replay logic.
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 // On-demand interaction check (used by the entry form before saving).
@@ -109,8 +112,10 @@ router.post(
       action: 'CREATE',
       entity: 'DispensingRecord',
       entityId: result.record.id,
-      // Controlled-substance dispensing is flagged for the separate audit trail.
-      metadata: { prescriptionId: req.params.id, controlled: result.isControlled },
+      // Controlled-substance dispensing is flagged for the separate audit
+      // trail; an idempotent-replay from an offline sync retry is flagged too
+      // so it doesn't read as a second, real dispense in the audit trail.
+      metadata: { prescriptionId: req.params.id, controlled: result.isControlled, replayed: 'replayed' in result && result.replayed },
       req,
     });
     res.status(201).json(result);

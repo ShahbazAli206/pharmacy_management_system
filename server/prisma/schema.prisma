@@ -547,6 +547,11 @@ model DispensingRecord {
   stockLotId       String?
   stockLot         StockLot?    @relation(fields: [stockLotId], references: [id])
   counsellingNotes String?
+  // Set only when this fill was queued client-side during an outage and
+  // synced on reconnect (spec §13.2). Lets a retried sync — e.g. the client
+  // never saw the response before losing connection again — return the
+  // original result instead of dispensing the same fill twice.
+  offlineSyncKey   String?      @unique
 
   @@index([prescriptionId])
   @@index([pharmacistUserId])

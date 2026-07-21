@@ -38,6 +38,8 @@ const schema = z.object({
   // PATH unless overridden (e.g. a portable/non-standard Postgres install).
   PG_DUMP_PATH: z.string().default('pg_dump'),
   BACKUP_DIR: z.string().default('backups'),
+  // Automated daily backup job (spec §13.2) prunes anything older than this.
+  BACKUP_RETENTION_DAYS: z.coerce.number().default(30),
 
   // Background job queue (spec §16: "background job queues... for OCR
   // processing, report generation, and notification sending"). Unset =

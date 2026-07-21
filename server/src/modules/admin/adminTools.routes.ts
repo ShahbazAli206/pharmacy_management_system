@@ -12,6 +12,7 @@ import { qrCodeSvg } from '../../utils/qrcode';
 import { createBackup, listBackups, resolveBackupPath } from '../../services/backup';
 import { recordAudit } from '../../services/audit';
 import { runDailySalesSummaryJob } from '../../jobs/dailySalesSummary';
+import { runAutomatedBackupJob } from '../../jobs/automatedBackup';
 
 const router = Router();
 router.use(authenticate);
@@ -142,6 +143,21 @@ router.post(
   asyncHandler(async (req, res) => {
     const result = await runDailySalesSummaryJob();
     await recordAudit({ action: 'CREATE', entity: 'DailySalesSummaryJob', metadata: result, req });
+    res.status(201).json(result);
+  }),
+);
+
+/**
+ * Manual trigger for the automated daily backup+prune job (owner-only) —
+ * the scheduler runs this automatically once a day; exposed for testing.
+ * Distinct from POST /backups above (that's create-only, no pruning).
+ */
+router.post(
+  '/jobs/automated-backup',
+  requirePermission(PERMISSIONS.SYSTEM_MONITOR),
+  asyncHandler(async (req, res) => {
+    const result = await runAutomatedBackupJob();
+    await recordAudit({ action: 'CREATE', entity: 'AutomatedBackupJob', metadata: { deleted: result.deleted }, req });
     res.status(201).json(result);
   }),
 );
