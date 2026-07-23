@@ -1,0 +1,3 @@
+# Intentionally empty. Vercel's build requires an existing outputDirectory
+# ("public"), but this backend serves no static files — vercel.json rewrites
+# every request to the /api serverless function, so nothing here is ever served.
