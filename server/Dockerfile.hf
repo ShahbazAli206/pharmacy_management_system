@@ -1,0 +1,45 @@
+# Hugging Face Spaces Dockerfile — Pharmacy Management API (Express + Prisma)
+# No Redis/websockets needed here (unlike the Islamic Assistant backend), so
+# this is a plain single-process container.
+
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+FROM node:20-bookworm-slim AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npx prisma generate
+RUN npm run build
+
+FROM node:20-bookworm-slim AS runtime
+
+# postgresql-client provides pg_dump for the admin console's on-demand backup
+# feature (PG_DUMP_PATH=pg_dump resolves against PATH).
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client && \
+    rm -rf /var/lib/apt/lists/*
+
+# HF Spaces requires user ID 1000
+RUN useradd -m -u 1000 user
+
+WORKDIR /home/user/app
+
+# Full node_modules (not pruned) — the `prisma` CLI (a devDependency) has to
+# stay available at runtime so start.sh can run `prisma migrate deploy`.
+COPY --from=build --chown=user /app/node_modules ./node_modules
+COPY --from=build --chown=user /app/dist ./dist
+COPY --from=build --chown=user /app/prisma ./prisma
+COPY --from=build --chown=user /app/package.json ./package.json
+COPY --chown=user start.sh ./start.sh
+RUN chmod +x ./start.sh
+
+# HF Spaces requires port 7860
+ENV PORT=7860
+ENV NODE_ENV=production
+
+EXPOSE 7860
+
+USER user
+CMD ["./start.sh"]
